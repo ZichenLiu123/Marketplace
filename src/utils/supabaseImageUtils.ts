@@ -89,6 +89,12 @@ export const getDirectDownloadUrl = async (url: string, isSupabaseUrl: boolean):
     
     console.log('Extracted bucket and path:', { bucket, filePath });
     
+    // Check for user authentication
+    const { data: session } = await supabase.auth.getSession();
+    if (!session || !session.session) {
+      console.warn('No authenticated session found for creating signed URL');
+    }
+    
     // Generate a fresh signed URL with download=true
     const { data: signedUrlData, error: signedUrlError } = await supabase.storage
       .from(bucket)

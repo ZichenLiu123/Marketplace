@@ -1,43 +1,50 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+
 const Hero = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
+
   useEffect(() => {
     setIsLoaded(true);
   }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
-  return <div className="relative min-h-[90vh] flex items-center overflow-hidden">
-      {/* Background with overlay */}
+
+  return <div className="relative pt-28 pb-20 min-h-[100vh] flex items-center overflow-hidden">
+      {/* Enhanced background with campus and student-oriented theme */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-toronto-blue opacity-80"></div>
-        <div className="absolute inset-0 bg-cover bg-center" style={{
-        backgroundImage: "url('https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&h=1080&q=80')",
-        filter: "brightness(0.5) saturate(1.2)"
+        <div className="absolute inset-0 bg-cover bg-center transform scale-105" style={{
+        backgroundImage: "url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&h=1080&q=80')",
+        filter: "brightness(0.6) saturate(1.1)",
+        animation: "slow-drift 40s ease-in-out infinite alternate"
       }}></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-toronto-blue/90 via-toronto-blue/75 to-black/60 mix-blend-multiply"></div>
+        <div className="absolute inset-0 backdrop-blur-[2px]"></div>
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 relative z-10 pt-16">
+      <div className="container mx-auto px-4 relative z-10 py-16">
         <div className="max-w-5xl mx-auto text-center">
           <div className={`transition-all duration-700 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}>
-            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight tracking-tight">
               The Marketplace Exclusively for <br className="hidden md:block" />
-              <span className="text-toronto-gold">University of Toronto</span> Students
+              <span className="bg-gradient-to-r from-toronto-gold to-amber-300 bg-clip-text text-transparent drop-shadow-md">University of Toronto</span> Students
             </h1>
           </div>
           
           <div className={`transition-all duration-700 delay-300 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}>
-            <p className="text-xl text-white/90 mb-8 max-w-3xl mx-auto">
+            <p className="text-xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed font-light">
               Buy and sell textbooks, electronics, furniture and more with verified UofT students. 
               Safe, local, and designed specifically for our community.
             </p>
@@ -46,35 +53,18 @@ const Hero = () => {
           <div className={`transition-all duration-700 delay-500 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}>
             <form onSubmit={handleSearch} className="flex flex-col md:flex-row max-w-2xl mx-auto space-y-4 md:space-y-0 md:space-x-4">
               <div className="relative flex-grow">
-                <Input type="text" placeholder="What are you looking for?" className="w-full pl-10 h-12 text-base" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-                <Search className="absolute left-3 top-3.5 h-5 w-5 text-muted-foreground" />
+                <Input type="text" placeholder="What are you looking for?" className="w-full pl-12 h-14 text-base bg-white/95 border-transparent focus-visible:ring-toronto-gold rounded-full shadow-lg" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                <Search className="absolute left-4 top-4.5 h-5 w-5 text-muted-foreground" />
               </div>
-              <Button type="submit" className="h-12 px-8 bg-toronto-gold text-toronto-dark hover:bg-toronto-gold/90">
+              <Button type="submit" className="h-14 px-8 bg-toronto-gold text-toronto-dark hover:bg-toronto-gold/90 font-medium shadow-lg rounded-full btn-glow">
                 Search
               </Button>
             </form>
-            
-            {/* Sign up button */}
-            <div className="mt-6">
-              <Button variant="outline" className="bg-white/20 text-white border-white/30 hover:bg-white/30" asChild>
-                
-              </Button>
-            </div>
-          </div>
-
-          <div className={`mt-16 transition-all duration-700 delay-700 ${isLoaded ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8 max-w-3xl mx-auto">
-              {['Textbooks', 'Electronics', 'Furniture', 'Services'].map((category, index) => <Link key={category} to={`/products?category=${category.toLowerCase()}`} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 hover:bg-white/20 transition-all duration-300" style={{
-              animationDelay: `${index * 100}ms`
-            }}>
-                  <span className="text-white font-medium">{category}</span>
-                </Link>)}
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Wave Shape Divider */}
+      {/* Enhanced Wave Shape Divider */}
       <div className="absolute bottom-0 left-0 w-full overflow-hidden">
         <svg className="relative block w-full h-24" viewBox="0 0 1200 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" className="fill-white"></path>
@@ -84,4 +74,5 @@ const Hero = () => {
       </div>
     </div>;
 };
+
 export default Hero;

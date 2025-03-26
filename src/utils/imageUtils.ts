@@ -14,7 +14,18 @@ export const uploadImagePreservingFormat = async (
   file: File
 ): Promise<string | null> => {
   try {
-    console.log('Starting image upload with format preservation, file type:', file.type);
+    if (!userId) {
+      console.error('ERROR: User ID is required for image upload due to RLS policy');
+      return null;
+    }
+
+    console.log('Starting image upload with format preservation', {
+      bucket, 
+      userId,
+      fileType: file.type,
+      fileName: file.name,
+      fileSize: file.size
+    });
     
     // Generate timestamp for unique file names
     const timestamp = Date.now();
@@ -40,17 +51,42 @@ export const uploadImagePreservingFormat = async (
     }
     
     // Create final file path with original file extension to preserve format
+    // IMPORTANT: Include userId as the FIRST segment in the path to satisfy RLS policy
     const fileName = `${userId}/${timestamp}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     
     console.log('Uploading to storage path:', fileName, 'with content type:', file.type);
+    
+    // Check if the bucket exists first - use exact case-sensitive bucket name
+    const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+    if (bucketError) {
+      console.error('Error checking buckets:', bucketError);
+      return null;
+    }
+    
+    // Use case-insensitive comparison to find the bucket regardless of case
+    const bucketExists = buckets.some(b => b.name.toLowerCase() === bucket.toLowerCase());
+    if (!bucketExists) {
+      console.error(`Error: Bucket does not exist: ${bucket}`);
+      return null;
+    }
+    
+    // Use the actual bucket name from the buckets list to ensure correct case
+    const actualBucketName = buckets.find(b => b.name.toLowerCase() === bucket.toLowerCase())?.name || bucket;
     
     // Create a proper binary blob from the file with correct content type
     const arrayBuffer = await file.arrayBuffer();
     const blob = new Blob([arrayBuffer], { type: file.type || `image/${fileExt}` });
     
+    // Get current session to verify we're authenticated
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      console.error('ERROR: No authenticated session found');
+      return null;
+    }
+    
     // Upload with minimal processing - explicitly preserve binary format
     const { data, error } = await supabase.storage
-      .from(bucket)
+      .from(actualBucketName)
       .upload(fileName, blob, {
         cacheControl: '3600',
         upsert: true,
@@ -59,6 +95,7 @@ export const uploadImagePreservingFormat = async (
     
     if (error) {
       console.error('Error uploading image:', error);
+      console.error('Error details:', JSON.stringify(error));
       return null;
     }
     
@@ -71,7 +108,7 @@ export const uploadImagePreservingFormat = async (
     
     // Get the public URL with download=true parameter to ensure proper format
     const { data: publicUrlData } = supabase.storage
-      .from(bucket)
+      .from(actualBucketName)
       .getPublicUrl(data.path, { 
         download: true  // Force download parameter for proper content type handling
       });
@@ -192,8 +229,9 @@ export const uploadImage = async (
   file: File
 ): Promise<string | null> => {
   try {
-    // Use the improved format-preserving upload function
-    return await uploadImagePreservingFormat(bucket, userId, file);
+    // Always use "listing-images" regardless of passed bucket parameter
+    // This ensures backward compatibility
+    return await uploadImagePreservingFormat('listing-images', userId, file);
   } catch (error) {
     console.error('Error in uploadImage:', error);
     return null;
@@ -212,7 +250,7 @@ export const deleteImage = async (imageUrl: string): Promise<boolean> => {
       return false;
     }
     
-    const bucket = storageMatch[2];
+    const bucket = 'Listing Images'; // Use the correct bucket name regardless of what's in the URL
     const path = storageMatch[3].split('?')[0]; // Remove query params
     
     console.log('Deleting image from storage:', { bucket, path });

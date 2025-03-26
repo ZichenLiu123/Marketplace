@@ -1,3 +1,4 @@
+
 import { supabase as configuredSupabase } from '@/integrations/supabase/client';
 import { User } from '@/types/auth';
 import { v4 as uuidv4 } from 'uuid';
@@ -315,86 +316,9 @@ export const deleteListingAndImage = async (listingId: string, imageUrl?: string
   }
 };
 
-// Get messages for a user
-export const getUserMessages = async (userId: string): Promise<any[]> => {
-  if (!userId || !isSupabaseConfigured()) return [];
-  
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching user messages:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error in getUserMessages:', error);
-    return [];
-  }
-};
-
-// Send a message
-export const sendMessage = async (
-  senderId: string, 
-  receiverId: string, 
-  message: string, 
-  listingId?: string, 
-  listingTitle?: string
-): Promise<boolean> => {
-  if (!senderId || !receiverId || !isSupabaseConfigured()) return false;
-  
-  try {
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        sender_id: senderId,
-        receiver_id: receiverId,
-        message,
-        listing_id: listingId,
-        listing_title: listingTitle,
-        read: false
-      });
-    
-    if (error) {
-      console.error('Error sending message:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in sendMessage:', error);
-    return false;
-  }
-};
-
-// Mark message as read
-export const markMessageAsRead = async (messageId: string): Promise<boolean> => {
-  if (!messageId || !isSupabaseConfigured()) return false;
-  
-  try {
-    const { error } = await supabase
-      .from('messages')
-      .update({ read: true })
-      .eq('id', messageId);
-    
-    if (error) {
-      console.error('Error marking message as read:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in markMessageAsRead:', error);
-    return false;
-  }
-};
-
-// Flag a listing
+/**
+ * Flag a listing
+ */
 export const flagListing = async (
   flaggerId: string,
   listingId: string,

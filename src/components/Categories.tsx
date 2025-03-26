@@ -78,17 +78,16 @@ const Categories = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry.isIntersecting);
-      },
-      { threshold: 0.1 }
-    );
-
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsVisible(entry.isIntersecting);
+    }, {
+      threshold: 0.1
+    });
+    
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
-
+    
     return () => {
       if (containerRef.current) {
         observer.unobserve(containerRef.current);
@@ -105,9 +104,9 @@ const Categories = () => {
   const scroll = (direction: 'left' | 'right') => {
     if (containerRef.current) {
       const newPosition = direction === 'left' 
-        ? Math.max(scrollPosition - 300, 0)
+        ? Math.max(scrollPosition - 300, 0) 
         : Math.min(scrollPosition + 300, maxScroll.current);
-      
+        
       containerRef.current.scrollTo({
         left: newPosition,
         behavior: 'smooth'
@@ -128,101 +127,60 @@ const Categories = () => {
   };
 
   return (
-    <section className="py-20 bg-gray-50" ref={containerRef}>
-      <div className="container mx-auto px-4">
+    <section className="py-16 bg-white relative overflow-hidden">
+      <div className="container mx-auto px-4 relative">
         <div className="mb-12 text-center">
-          <h2 className={`text-3xl md:text-4xl font-bold mb-4 transition-all duration-700 
-            ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}>
-            Categories
-          </h2>
-          <p className={`text-lg text-gray-600 max-w-2xl mx-auto transition-all duration-700 delay-100
-            ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}>
-            Explore our marketplace categories designed specifically for UofT students
+          <h2 className="text-3xl md:text-4xl font-bold text-toronto-dark mb-4">Browse by Category</h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Find exactly what you need, organized by category
           </p>
-          
-          {!isAuthenticated && (
-            <div className="mt-4 text-amber-600 bg-amber-50 p-4 rounded-lg inline-flex items-center gap-2">
-              <LockIcon className="h-4 w-4" />
-              <span>Sign in required to browse categories</span>
-            </div>
-          )}
         </div>
-
+        
         <div className="relative">
-          {/* Navigation Arrows */}
-          <div className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 hidden md:block">
+          {scrollPosition > 0 && (
             <Button 
               variant="outline" 
               size="icon" 
-              className="rounded-full shadow-md hover:bg-toronto-blue hover:text-white"
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md border border-gray-200 rounded-full h-10 w-10 -ml-5"
               onClick={() => scroll('left')}
-              disabled={scrollPosition <= 0}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
+          )}
+          
+          <div 
+            ref={containerRef}
+            className={`flex space-x-6 pb-4 overflow-x-auto hide-scrollbar transition-opacity duration-700 ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+          >
+            {categories.map((category) => {
+              const Icon = category.icon;
+              return (
+                <Link 
+                  key={category.id}
+                  to={category.link}
+                  className={`flex-shrink-0 w-64 p-6 rounded-xl border ${category.borderColor} ${category.color} transition-all duration-300 hover:shadow-md hover:-translate-y-1 group`}
+                  onClick={(e) => handleCategoryClick(e, category.link)}
+                >
+                  <div className={`rounded-full w-12 h-12 flex items-center justify-center ${category.iconColor} bg-white border ${category.borderColor} mb-4 transition-transform group-hover:scale-110`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2 text-gray-800">{category.name}</h3>
+                  <p className="text-sm text-gray-600">{category.description}</p>
+                </Link>
+              );
+            })}
           </div>
           
-          <div className="absolute top-1/2 -right-4 transform -translate-y-1/2 z-10 hidden md:block">
+          {scrollPosition < maxScroll.current && (
             <Button 
               variant="outline" 
               size="icon" 
-              className="rounded-full shadow-md hover:bg-toronto-blue hover:text-white"
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md border border-gray-200 rounded-full h-10 w-10 -mr-5"
               onClick={() => scroll('right')}
-              disabled={scrollPosition >= maxScroll.current}
             >
               <ArrowRight className="h-5 w-5" />
             </Button>
-          </div>
-
-          {/* Categories */}
-          <div 
-            className="flex overflow-x-auto space-x-6 py-4 no-scrollbar"
-            ref={containerRef}
-            onScroll={(e) => setScrollPosition(e.currentTarget.scrollLeft)}
-          >
-            {categories.map((category, index) => (
-              <div
-                key={category.id}
-                className={`flex-shrink-0 w-64 ${category.color} border ${category.borderColor} rounded-lg p-6 transition-all duration-500 card-hover relative
-                  ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-10'}`}
-                style={{ transitionDelay: `${index * 100}ms` }}
-              >
-                <div className={`rounded-full w-12 h-12 flex items-center justify-center mb-4 ${category.iconColor} bg-white`}>
-                  <category.icon className="h-6 w-6" />
-                </div>
-                <h3 className="text-lg font-bold mb-2">{category.name}</h3>
-                <p className="text-gray-600 mb-4">{category.description}</p>
-                
-                {isAuthenticated ? (
-                  <Button variant="link" className="p-0 text-toronto-blue" asChild>
-                    <Link to={category.link}>Browse {category.name}</Link>
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="link" 
-                    className="p-0 text-toronto-blue flex items-center gap-1"
-                    onClick={(e) => handleCategoryClick(e, category.link)}
-                  >
-                    <LockIcon className="h-3 w-3" />
-                    <span>Sign in to Browse</span>
-                  </Button>
-                )}
-                
-                {!isAuthenticated && (
-                  <div className="absolute inset-0 bg-black/10 rounded-lg backdrop-blur-[1px] flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <Button 
-                      variant="secondary" 
-                      className="gap-2"
-                      onClick={() => navigate('/auth')}
-                    >
-                      <LockIcon className="h-4 w-4" />
-                      Sign in to Browse
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          )}
         </div>
       </div>
     </section>

@@ -12,6 +12,7 @@ import { useSavedItems } from "@/contexts/SavedItemsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import MyListings from "@/components/MyListings";
 import { Calendar, Home, Inbox, Search, Settings, LogOut, Edit, Save, Trash2, Camera, User, ShoppingBag, Heart, MessageSquare, Loader2 } from "lucide-react";
+
 interface UserProfileFormData {
   fullName: string;
   email: string;
@@ -20,6 +21,7 @@ interface UserProfileFormData {
   year: string;
   bio: string;
 }
+
 const Account = () => {
   const {
     toast: customToast
@@ -29,7 +31,6 @@ const Account = () => {
     user,
     logout,
     updateUserProfile,
-    userMessages,
     isUpdatingProfile
   } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
@@ -39,7 +40,6 @@ const Account = () => {
     savedItems,
     removeSavedItem
   } = useSavedItems();
-  const unreadCount = userMessages.filter(msg => !msg.read).length;
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [formData, setFormData] = useState<UserProfileFormData>({
     fullName: user?.name || '',
@@ -49,6 +49,7 @@ const Account = () => {
     year: user?.year || '',
     bio: user?.bio || ''
   });
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -62,9 +63,11 @@ const Account = () => {
       console.log("Setting form data from user:", user);
     }
   }, [user]);
+
   const handleNavClick = (tabId: string) => {
     setActiveTab(tabId);
   };
+
   const handleProfileImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -78,11 +81,9 @@ const Account = () => {
     };
     reader.readAsDataURL(file);
   };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const {
-      id,
-      value
-    } = e.target;
+    const { id, value } = e.target;
     if (id !== 'bio' && id !== 'phone') {
       setFormData(prev => ({
         ...prev,
@@ -90,6 +91,7 @@ const Account = () => {
       }));
     }
   };
+
   const toggleEditMode = () => {
     if (isEditing) {
       handleSubmit();
@@ -97,15 +99,18 @@ const Account = () => {
       setIsEditing(true);
     }
   };
+
   const handleRemoveSavedItem = (id: string) => {
     if (removeSavedItem(id)) {
       toast.success("The item has been removed from your saved items");
     }
   };
+
   const handleSignOut = () => {
     logout();
     navigate('/');
   };
+
   const handleSubmit = async () => {
     if (!isEditing) return;
     try {
@@ -134,12 +139,14 @@ const Account = () => {
       setIsSubmitting(false);
     }
   };
+
   useEffect(() => {
     const hash = window.location.hash.replace('#', '');
     if (hash && ['profile', 'listings', 'saved', 'settings'].includes(hash)) {
       setActiveTab(hash);
     }
   }, []);
+
   return <div className="min-h-screen flex flex-col">
       <Navbar />
       
@@ -198,15 +205,7 @@ const Account = () => {
                       <Heart className="h-5 w-5" />
                       <span>Saved Items</span>
                     </a>
-                    <Link to="/inbox" className="flex items-center justify-between space-x-3 px-3 py-2 rounded-md hover:bg-gray-100">
-                      <div className="flex items-center space-x-3">
-                        <MessageSquare className="h-5 w-5" />
-                        <span>Inbox</span>
-                      </div>
-                      {unreadCount > 0 && <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                          {unreadCount}
-                        </span>}
-                    </Link>
+                    
                     <a href="#settings" className={`flex items-center space-x-3 px-3 py-2 rounded-md ${activeTab === 'settings' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'}`} onClick={() => handleNavClick('settings')}>
                       <Settings className="h-5 w-5" />
                       <span>Settings</span>
@@ -223,7 +222,24 @@ const Account = () => {
                 {activeTab === 'profile' && <div className="bg-white rounded-lg shadow-sm p-6">
                     <div className="flex justify-between items-center mb-4">
                       <h2 className="text-xl font-semibold">Personal Information</h2>
-                      
+                      <Button 
+                        variant="outline" 
+                        onClick={toggleEditMode} 
+                        disabled={isUpdatingProfile}
+                        className={isEditing ? "bg-green-50 text-green-700 hover:bg-green-100" : ""}
+                      >
+                        {isEditing ? (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Save
+                          </>
+                        ) : (
+                          <>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </>
+                        )}
+                      </Button>
                     </div>
                     
                     {isUpdatingProfile && <div className="mb-4 p-2 bg-blue-50 text-blue-700 rounded flex items-center">
@@ -373,4 +389,5 @@ const Account = () => {
       <Footer />
     </div>;
 };
+
 export default Account;

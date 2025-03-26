@@ -2,7 +2,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { useCoreAuth } from '@/contexts/CoreAuthContext';
+import { toast } from 'sonner';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -19,16 +21,31 @@ const AuthLayout = ({
   showRequestedPage = false,
   requestPath = '/'
 }: AuthLayoutProps) => {
+  const { hasMultipleActiveSessions, logout } = useCoreAuth();
+  
+  const handleForceSignOut = async () => {
+    try {
+      await logout();
+      toast.success("All Sessions Ended", {
+        description: "You have been signed out of all devices and tabs"
+      });
+      // Force page reload to ensure clean state
+      window.location.reload();
+    } catch (error) {
+      console.error("Error during force sign out:", error);
+      toast.error("Error", {
+        description: "There was a problem signing you out"
+      });
+    }
+  };
+  
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="rounded-md bg-toronto-blue p-1">
-              <ShoppingBag className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-display font-bold text-toronto-dark">
-              UofT<span className="text-toronto-blue">Market</span>
+            <span className="text-xl font-bold text-toronto-blue">
+              UofT<span className="text-toronto-gold">Market</span>
             </span>
           </Link>
           
@@ -41,9 +58,40 @@ const AuthLayout = ({
         </div>
         
         <div className="max-w-md mx-auto">
+          {/* Multiple sessions warning banner */}
+          {hasMultipleActiveSessions && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded shadow-sm">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <RefreshCw className="h-5 w-5 text-yellow-500" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Multiple Sessions Detected
+                  </h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <p>
+                      You appear to be logged in on multiple tabs or devices. This may cause sync issues.
+                    </p>
+                    <div className="mt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-yellow-800 border-yellow-600 hover:bg-yellow-100"
+                        onClick={handleForceSignOut}
+                      >
+                        Sign out everywhere
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           <div className="bg-white rounded-lg shadow-soft p-8 animate-fade-in">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-toronto-dark mb-2">{title}</h1>
+              <h1 className="text-2xl font-bold text-toronto-dark mb-2 font-display">{title}</h1>
               <p className="text-gray-600">{subtitle}</p>
               {showRequestedPage && requestPath !== '/' && (
                 <p className="mt-2 text-toronto-blue text-sm">

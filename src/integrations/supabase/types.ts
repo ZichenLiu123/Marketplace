@@ -119,61 +119,6 @@ export type Database = {
           },
         ]
       }
-      messages: {
-        Row: {
-          created_at: string | null
-          id: string
-          listing_id: string | null
-          listing_title: string | null
-          message: string
-          read: boolean | null
-          receiver_id: string
-          sender_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          listing_id?: string | null
-          listing_title?: string | null
-          message: string
-          read?: boolean | null
-          receiver_id: string
-          sender_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          listing_id?: string | null
-          listing_title?: string | null
-          message?: string
-          read?: boolean | null
-          receiver_id?: string
-          sender_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_listing_id_fkey"
-            columns: ["listing_id"]
-            isOneToOne: false
-            referencedRelation: "listings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_receiver_id_fkey"
-            columns: ["receiver_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_sender_id_fkey"
-            columns: ["sender_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
           bio: string | null

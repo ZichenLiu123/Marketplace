@@ -26,28 +26,6 @@ export interface ProfileData {
   phone?: string;
 }
 
-export interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  receiverId: string;
-  message: string;
-  timestamp: string;
-  read: boolean;
-  listingId?: string;
-  listingTitle?: string;
-}
-
-export interface Conversation {
-  partnerId: string;
-  partnerName: string;
-  messages: Message[];
-  latestMessage: Message;
-  unreadCount: number;
-  listingId?: string;
-  listingTitle?: string;
-}
-
 export interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -59,11 +37,4 @@ export interface AuthContextType {
   signup: (name: string, email: string, password: string, profileData?: any) => Promise<boolean>;
   logout: () => Promise<void>;
   updateUserProfile: (profile: any) => Promise<boolean>;
-  // Messaging-related properties
-  userMessages: Message[];
-  userConversations: Conversation[];
-  sendMessage: (receiverId: string, message: string, listingId?: string, listingTitle?: string) => Promise<boolean>;
-  markMessageAsRead: (messageId: string) => void;
-  deleteMessage: (messageId: string) => void;
-  deleteConversation: (partnerId: string) => void;
 }

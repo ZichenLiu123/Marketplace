@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from "sonner";
 import { User as AppUser, AuthContextType } from '@/types/auth';
 import { Loader2 } from "lucide-react";
-import { MessagingProvider, RawAuthContext } from './MessagingContext';
 
 // Create the context for the complete auth type
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -339,13 +338,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Create the raw auth context value for MessagingProvider
-  const rawAuthContextValue = {
-    user,
-    isAuthenticated: !!user,
-    isLoading
-  };
-  
   // This context will be used by children components via useAuth() hook
   const authContextValue: AuthContextType = {
     user,
@@ -357,23 +349,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     signup,
     logout,
-    updateUserProfile,
-    userMessages: [], // These will be provided by the MessagingProvider
-    userConversations: [],
-    sendMessage: async () => false,
-    markMessageAsRead: async () => {},
-    deleteMessage: async () => {},
-    deleteConversation: async () => {}
+    updateUserProfile
   };
   
   return (
-    <RawAuthContext.Provider value={rawAuthContextValue}>
-      <MessagingProvider>
-        <AuthContext.Provider value={authContextValue}>
-          {children}
-        </AuthContext.Provider>
-      </MessagingProvider>
-    </RawAuthContext.Provider>
+    <AuthContext.Provider value={authContextValue}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 

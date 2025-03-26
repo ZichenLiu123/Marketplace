@@ -1,42 +1,71 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, CheckCircle, XCircle, AlertTriangle, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import { Loader2, CheckCircle, AlertTriangle, FileCode } from "lucide-react";
+import { fixStoragePolicies, diagnoseBucketIssues } from '@/utils/supabaseStorageTest';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const StoragePolicyFixer = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-
-  const fixPolicies = async () => {
+  const [diagnostics, setDiagnostics] = useState<any>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [sqlFix, setSqlFix] = useState<string | null>(null);
+  
+  const checkLoginStatus = async () => {
+    const { data } = await supabase.auth.getSession();
+    setIsLoggedIn(!!data.session);
+    setUserId(data.session?.user?.id || null);
+    return !!data.session;
+  };
+  
+  const runDiagnostics = async () => {
     setIsLoading(true);
+    
     try {
-      // Since we can't query the storage schema directly, 
-      // we'll just run the manual fix straight away
-      const manualFixResult = await manualPolicyFix();
-      setResult(manualFixResult);
+      // First check if user is logged in
+      const loggedIn = await checkLoginStatus();
       
-      if (manualFixResult.success) {
-        toast.success("Storage policies fixed!", {
-          description: "Your Supabase storage policies have been cleaned up."
+      if (!loggedIn) {
+        setDiagnostics({
+          success: false,
+          suggestions: [
+            "You must be logged in to upload images.", 
+            "Please sign in first and try again."
+          ]
+        });
+        toast.error("Authentication required", {
+          description: "You must be logged in to test storage policies."
+        });
+        return;
+      }
+      
+      const result = await diagnoseBucketIssues();
+      setDiagnostics(result);
+      
+      if (result.suggestions && result.suggestions.length > 0) {
+        toast("Diagnostics complete", {
+          description: "Found potential issues with storage configuration."
         });
       } else {
-        toast.error("Failed to fix storage policies", {
-          description: "There was an error fixing your storage policies."
+        toast.success("Storage looks good", {
+          description: "No obvious issues found with storage policies."
         });
       }
     } catch (error) {
-      console.error("Error fixing storage policies:", error);
-      setResult({
-        success: false,
-        details: {
-          error: error instanceof Error ? error.message : "Unknown error"
-        }
-      });
-      
-      toast.error("Failed to fix storage policies", {
+      console.error("Error running diagnostics:", error);
+      toast.error("Diagnostics failed", {
         description: error instanceof Error ? error.message : "Unknown error"
       });
     } finally {
@@ -44,118 +73,125 @@ const StoragePolicyFixer = () => {
     }
   };
   
-  const manualPolicyFix = async () => {
+  const showSqlFix = async () => {
+    setIsLoading(true);
+    
     try {
-      // Test uploading after fixing policies
-      const testBlob = new Blob(['test'], { type: 'text/plain' });
-      const testFile = new File([testBlob], 'test.txt', { type: 'text/plain' });
-      const testPath = `test-${Date.now()}.txt`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('listing_images')
-        .upload(testPath, testFile, {
-          cacheControl: '0',
-          upsert: true
+      const result = await fixStoragePolicies();
+      if (result.success) {
+        setSqlFix(result.sql || '-- No SQL fixes needed');
+        toast.success("SQL fix generated", {
+          description: "View the SQL to fix storage policies"
         });
-      
-      if (uploadError) {
-        return {
-          success: false,
-          details: {
-            error: `Failed to upload test file: ${uploadError.message}`,
-            message: "The manual fix did not resolve the issue. Please contact support."
-          }
-        };
+      } else {
+        toast.error("Failed to generate SQL fix", {
+          description: result.message
+        });
       }
-      
-      // Clean up the test file
-      await supabase.storage.from('listing_images').remove([testPath]);
-      
-      return {
-        success: true,
-        details: {
-          message: "Manual fix was successful. You can now upload files to your bucket."
-        }
-      };
     } catch (error) {
-      return {
-        success: false,
-        details: {
-          error: error instanceof Error ? error.message : String(error),
-          message: "The manual fix failed. Please check the console for more details."
-        }
-      };
+      console.error("Error generating SQL fix:", error);
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : "Unknown error"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  const resetAndTest = () => {
-    setResult(null);
-    fixPolicies();
-  };
-
+  
   return (
     <div className="space-y-4 p-4 border rounded-lg">
-      <h3 className="text-lg font-medium">Storage Policy Repair</h3>
-      <p className="text-sm text-gray-600 mb-4">
-        If you have issues uploading files to your Supabase storage buckets, this tool will attempt 
-        to fix policy conflicts.
-      </p>
+      <h3 className="text-lg font-medium">Supabase Storage Policy Diagnostics</h3>
       
-      <Button 
-        onClick={fixPolicies}
-        disabled={isLoading}
-        variant="outline"
-        className="w-full"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Fixing Storage Policies...
-          </>
-        ) : (
-          <>Fix Storage Policies</>
-        )}
-      </Button>
+      <div className="flex flex-col md:flex-row gap-2">
+        <Button 
+          onClick={runDiagnostics}
+          disabled={isLoading}
+          variant="outline"
+          size="sm"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Running Diagnostics...
+            </>
+          ) : (
+            <>Check Storage Policies</>
+          )}
+        </Button>
+        
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button 
+              onClick={showSqlFix}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+            >
+              <FileCode className="mr-2 h-4 w-4" />
+              View SQL Fix
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>SQL to Fix Storage Policies</DialogTitle>
+              <DialogDescription>
+                Run these SQL statements in your Supabase dashboard to fix storage policies
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-96 w-full rounded-md border p-4">
+              <pre className="text-xs font-mono whitespace-pre-wrap">{sqlFix || 'Loading...'}</pre>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+      </div>
       
-      {result && (
-        <Alert variant={result.success ? "default" : "destructive"} className="mt-4">
-          {result.success ? (
+      {isLoggedIn !== null && (
+        <Alert variant={isLoggedIn ? "default" : "destructive"}>
+          {isLoggedIn ? (
             <CheckCircle className="h-4 w-4" />
           ) : (
             <AlertTriangle className="h-4 w-4" />
           )}
           <AlertTitle>
-            {result.success ? "Policies Fixed Successfully" : "Failed to Fix Policies"}
+            {isLoggedIn ? "Authentication Status: Logged In" : "Authentication Status: Not Logged In"}
           </AlertTitle>
           <AlertDescription className="mt-2">
-            {result.details.message || ""}
-            {result.details.error && (
-              <div className="mt-2 text-sm bg-red-50 p-2 rounded">
-                Error: {result.details.error}
+            {isLoggedIn ? (
+              <div>
+                <p>You are logged in with user ID: <code className="bg-gray-100 p-1 rounded text-xs">{userId?.substring(0, 8)}...</code></p>
+                <p className="text-sm mt-1">This is important because Storage RLS policies require a valid user ID.</p>
               </div>
-            )}
-            
-            {!result.success && (
-              <Button 
-                onClick={resetAndTest} 
-                variant="outline" 
-                size="sm" 
-                className="mt-4"
-                disabled={isLoading}
-              >
-                <RotateCw className="mr-2 h-3 w-3" />
-                Try Again
-              </Button>
+            ) : (
+              <div>
+                <p className="text-sm">You must be logged in to upload images due to Row Level Security policies.</p>
+                <p className="text-sm mt-1">Please sign in before attempting to upload images.</p>
+              </div>
             )}
           </AlertDescription>
         </Alert>
       )}
       
+      {diagnostics && diagnostics.suggestions && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Storage Configuration Suggestions</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              {diagnostics.suggestions.map((suggestion: string, index: number) => (
+                <li key={index}>{suggestion}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+      
       <div className="text-xs text-gray-500 mt-2">
-        <p>
-          <strong>Tip:</strong> After fixing policies, try uploading an image on your Sell page. 
-          If you still have issues, you may need to run the SQL migration again.
-        </p>
+        <p>Storage RLS policies require that:</p>
+        <ol className="list-decimal pl-5 mt-1">
+          <li>You must be authenticated to upload files</li>
+          <li>The file path must start with your user ID</li>
+          <li>You can only modify/delete your own files</li>
+        </ol>
       </div>
     </div>
   );

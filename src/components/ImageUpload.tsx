@@ -1,7 +1,7 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, X, Loader2 } from 'lucide-react';
+import { Camera, X, Loader2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImageUploadProps {
@@ -47,6 +47,14 @@ const ImageUpload = ({
       
       // Skip non-image files
       if (!file.type.startsWith('image/')) {
+        continue;
+      }
+      
+      // Check file size - Supabase has a default 10MB limit
+      if (file.size > 10 * 1024 * 1024) { // 10MB
+        toast.error("File too large", {
+          description: `${file.name} exceeds the 10MB file size limit.`
+        });
         continue;
       }
       
@@ -162,9 +170,15 @@ const ImageUpload = ({
         />
       </div>
       
-      <p className="text-xs text-gray-500">
-        Upload up to {maxImages} photos of your item. The first photo will be the cover image.
-      </p>
+      <div className="space-y-2">
+        <p className="text-xs text-gray-500">
+          Upload up to {maxImages} photos of your item. The first photo will be the cover image.
+        </p>
+        <div className="flex items-start gap-1 text-xs text-blue-600">
+          <Info className="h-3 w-3 mt-0.5" />
+          <p>You must be logged in to upload images.</p>
+        </div>
+      </div>
     </div>
   );
 };

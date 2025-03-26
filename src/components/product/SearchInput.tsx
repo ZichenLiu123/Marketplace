@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -36,8 +36,16 @@ const SearchInput = ({ searchQuery, setSearchQuery }: SearchInputProps) => {
     navigate(`${location.pathname}?${searchParams.toString()}`);
   };
 
+  const clearSearch = () => {
+    setInternalQuery('');
+    setSearchQuery('');
+    const searchParams = new URLSearchParams(location.search);
+    searchParams.delete('search');
+    navigate(`${location.pathname}?${searchParams.toString()}`);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="relative mb-6">
+    <form onSubmit={handleSubmit} className="relative flex-1 max-w-xl">
       <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
       <Input
         type="text"
@@ -46,6 +54,17 @@ const SearchInput = ({ searchQuery, setSearchQuery }: SearchInputProps) => {
         value={internalQuery}
         onChange={(e) => setInternalQuery(e.target.value)}
       />
+      {internalQuery && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-14 top-1 h-8 w-8"
+          onClick={clearSearch}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
       <Button 
         type="submit" 
         size="sm" 

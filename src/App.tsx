@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CoreAuthProvider } from "@/contexts/CoreAuthContext";
 import { SavedItemsProvider } from "@/contexts/SavedItemsContext";
 import { ListingsProvider } from "@/contexts/ListingsContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -102,49 +103,51 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <ListingsProvider>
-            <SavedItemsProvider>
-              <Toaster />
-              <Sonner />
-              <ScrollToTop />
-              <PWAFeatures />
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/faq" element={<FAQ />} />
-                
-                {/* Protected routes */}
-                <Route path="/products" element={
-                  <ProtectedRoute>
-                    <Products />
-                  </ProtectedRoute>
-                } />
-                <Route path="/product/:id" element={
-                  <ProtectedRoute>
-                    <ProductDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/sell" element={
-                  <ProtectedRoute>
-                    <Sell />
-                  </ProtectedRoute>
-                } />
-                <Route path="/account" element={
-                  <ProtectedRoute>
-                    <Account />
-                  </ProtectedRoute>
-                } />
-                
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </SavedItemsProvider>
-          </ListingsProvider>
-        </BrowserRouter>
+        <CoreAuthProvider>
+          <BrowserRouter>
+            <ListingsProvider>
+              <SavedItemsProvider>
+                <Toaster />
+                <Sonner />
+                <ScrollToTop />
+                <PWAFeatures />
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/faq" element={<FAQ />} />
+                  
+                  {/* Protected routes */}
+                  <Route path="/products" element={
+                    <ProtectedRoute>
+                      <Products />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/product/:id" element={
+                    <ProtectedRoute>
+                      <ProductDetail />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/sell" element={
+                    <ProtectedRoute>
+                      <Sell />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/account" element={
+                    <ProtectedRoute>
+                      <Account />
+                    </ProtectedRoute>
+                  } />
+                  
+                  {/* Catch-all route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </SavedItemsProvider>
+            </ListingsProvider>
+          </BrowserRouter>
+        </CoreAuthProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

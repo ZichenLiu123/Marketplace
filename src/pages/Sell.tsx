@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -17,15 +16,20 @@ import { uploadImagePreservingFormat } from "@/utils/imageUtils";
 import ImageUpload from "@/components/ImageUpload";
 import SupabaseStorageTest from "@/components/SupabaseStorageTest";
 import StoragePolicyFixer from "@/components/StoragePolicyFixer";
-
 const Sell = () => {
   const navigate = useNavigate();
-  const { addListing } = useListings();
-  const { user } = useAuth();
+  const {
+    addListing
+  } = useListings();
+  const {
+    user
+  } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [images, setImages] = useState<{ file: File; preview: string }[]>([]);
-  
+  const [images, setImages] = useState<{
+    file: File;
+    preview: string;
+  }[]>([]);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
@@ -36,7 +40,6 @@ const Sell = () => {
   const [contactInfo, setContactInfo] = useState("");
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
   const [shipping, setShipping] = useState(false);
-  
   const handlePaymentMethodChange = (method: string) => {
     setPaymentMethods(prev => {
       if (prev.includes(method)) {
@@ -46,41 +49,37 @@ const Sell = () => {
       }
     });
   };
-  
   const uploadImages = async () => {
     if (!user || images.length === 0) return [];
-    
     setUploadingImages(true);
     const uploadedImageUrls: string[] = [];
-    
     try {
       console.log('Starting image upload process for', images.length, 'images');
-      
+      if (!user.id) {
+        console.error('User ID is missing, cannot upload images');
+        toast.error("Authentication error", {
+          description: "User ID is missing. Please sign in again."
+        });
+        return [];
+      }
+      console.log('User ID for uploads:', user.id);
       for (const image of images) {
         if (!image.file) continue;
-        
         console.log('Uploading image:', image.file.name, 'type:', image.file.type);
-        
-        // Explicitly log file information for debugging
         console.log('File details:', {
           name: image.file.name,
           type: image.file.type,
           size: image.file.size,
           lastModified: new Date(image.file.lastModified).toISOString()
         });
-        
-        // Use the uploadImagePreservingFormat function which properly preserves format
-        const imageUrl = await uploadImagePreservingFormat('listing_images', user.id, image.file);
-        
+        const imageUrl = await uploadImagePreservingFormat('listing-images', user.id, image.file);
         if (!imageUrl) {
           console.error('Failed to upload image:', image.file.name);
           throw new Error(`Failed to upload image: ${image.file.name}`);
         }
-        
         console.log('Image uploaded successfully, URL:', imageUrl);
         uploadedImageUrls.push(imageUrl);
       }
-      
       console.log('All images uploaded:', uploadedImageUrls);
       return uploadedImageUrls;
     } catch (error) {
@@ -93,10 +92,8 @@ const Sell = () => {
       setUploadingImages(false);
     }
   };
-  
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
     if (!user) {
       toast.error("Authentication required", {
         description: "You need to be logged in to create a listing."
@@ -104,28 +101,23 @@ const Sell = () => {
       navigate('/auth');
       return;
     }
-    
     if (paymentMethods.length === 0) {
       toast.error("Payment methods required", {
         description: "Please select at least one payment method."
       });
       return;
     }
-    
     if (images.length === 0) {
       toast.error("Images required", {
         description: "Please add at least one image of your item."
       });
       return;
     }
-    
     setIsSubmitting(true);
-    
     try {
       console.log('Starting image upload...');
       const imageUrls = await uploadImages();
       console.log('Upload complete, image URLs:', imageUrls);
-      
       if (imageUrls.length === 0) {
         toast.error("Image upload failed", {
           description: "There was a problem uploading your images. Please try again."
@@ -133,7 +125,6 @@ const Sell = () => {
         setIsSubmitting(false);
         return;
       }
-      
       console.log('Creating new listing with image URL:', imageUrls[0]);
       const newListingId = await addListing({
         title,
@@ -150,7 +141,6 @@ const Sell = () => {
         paymentMethods,
         shipping
       });
-      
       if (newListingId) {
         toast.success("Listing created!", {
           description: "Your item has been successfully listed on UofT Market."
@@ -170,12 +160,10 @@ const Sell = () => {
       setIsSubmitting(false);
     }
   };
-  
-  return (
-    <div className="min-h-screen flex flex-col">
+  return <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <main className="flex-grow py-12">
+      <main className="flex-grow py-12 my-[40px]">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-3xl font-bold mb-2">Sell Your Item</h1>
@@ -191,28 +179,13 @@ const Sell = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="title">Title *</Label>
-                    <Input 
-                      id="title" 
-                      placeholder="Enter a descriptive title for your item" 
-                      required 
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                    />
+                    <Input id="title" placeholder="Enter a descriptive title for your item" required value={title} onChange={e => setTitle(e.target.value)} />
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="price">Price ($) *</Label>
-                      <Input 
-                        id="price" 
-                        type="number" 
-                        min="0" 
-                        step="0.01" 
-                        placeholder="0.00" 
-                        required 
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                      />
+                      <Input id="price" type="number" min="0" step="0.01" placeholder="0.00" required value={price} onChange={e => setPrice(e.target.value)} />
                     </div>
                     
                     <div>
@@ -252,33 +225,18 @@ const Sell = () => {
                   
                   <div>
                     <Label htmlFor="description">Description *</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Provide details about your item, including any defects or special features"
-                      rows={5}
-                      required
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                    />
+                    <Textarea id="description" placeholder="Provide details about your item, including any defects or special features" rows={5} required value={description} onChange={e => setDescription(e.target.value)} />
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    <Switch
-                      id="shipping"
-                      checked={shipping}
-                      onCheckedChange={setShipping}
-                    />
+                    <Switch id="shipping" checked={shipping} onCheckedChange={setShipping} />
                     <Label htmlFor="shipping">Offer Shipping</Label>
                   </div>
                   
                   <div>
                     <Label>Photos (max 5) *</Label>
                     <div className="mt-2">
-                      <ImageUpload 
-                        images={images} 
-                        setImages={setImages}
-                        maxImages={5}
-                      />
+                      <ImageUpload images={images} setImages={setImages} maxImages={5} />
                     </div>
                   </div>
                 </div>
@@ -310,47 +268,19 @@ const Sell = () => {
                     <Label>Payment Methods Accepted *</Label>
                     <div className="mt-2 space-y-2">
                       <div className="flex items-center space-x-2">
-                        <input 
-                          type="checkbox" 
-                          id="cash" 
-                          name="payment" 
-                          className="h-4 w-4" 
-                          checked={paymentMethods.includes("cash")}
-                          onChange={() => handlePaymentMethodChange("cash")}
-                        />
+                        <input type="checkbox" id="cash" name="payment" className="h-4 w-4" checked={paymentMethods.includes("cash")} onChange={() => handlePaymentMethodChange("cash")} />
                         <label htmlFor="cash">Cash</label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <input 
-                          type="checkbox" 
-                          id="e-transfer" 
-                          name="payment" 
-                          className="h-4 w-4" 
-                          checked={paymentMethods.includes("e-transfer")}
-                          onChange={() => handlePaymentMethodChange("e-transfer")}
-                        />
+                        <input type="checkbox" id="e-transfer" name="payment" className="h-4 w-4" checked={paymentMethods.includes("e-transfer")} onChange={() => handlePaymentMethodChange("e-transfer")} />
                         <label htmlFor="e-transfer">E-Transfer</label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <input 
-                          type="checkbox" 
-                          id="paypal" 
-                          name="payment" 
-                          className="h-4 w-4" 
-                          checked={paymentMethods.includes("paypal")}
-                          onChange={() => handlePaymentMethodChange("paypal")}
-                        />
+                        <input type="checkbox" id="paypal" name="payment" className="h-4 w-4" checked={paymentMethods.includes("paypal")} onChange={() => handlePaymentMethodChange("paypal")} />
                         <label htmlFor="paypal">PayPal</label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <input 
-                          type="checkbox" 
-                          id="other-payment" 
-                          name="payment" 
-                          className="h-4 w-4" 
-                          checked={paymentMethods.includes("other")}
-                          onChange={() => handlePaymentMethodChange("other")}
-                        />
+                        <input type="checkbox" id="other-payment" name="payment" className="h-4 w-4" checked={paymentMethods.includes("other")} onChange={() => handlePaymentMethodChange("other")} />
                         <label htmlFor="other-payment">Other (specify in description)</label>
                       </div>
                     </div>
@@ -378,13 +308,7 @@ const Sell = () => {
                     
                     <div>
                       <Label htmlFor="contact-info">Contact Information *</Label>
-                      <Input 
-                        id="contact-info" 
-                        placeholder="Email address or phone number" 
-                        required 
-                        value={contactInfo}
-                        onChange={(e) => setContactInfo(e.target.value)}
-                      />
+                      <Input id="contact-info" placeholder="Email address or phone number" required value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -392,30 +316,17 @@ const Sell = () => {
               
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <div className="flex items-start space-x-3 mb-6">
-                  <input 
-                    type="checkbox" 
-                    id="terms" 
-                    className="h-4 w-4 mt-1" 
-                    required 
-                  />
+                  <input type="checkbox" id="terms" className="h-4 w-4 mt-1" required />
                   <label htmlFor="terms" className="text-sm text-gray-600">
                     I confirm that my listing complies with the <a href="/terms" className="text-toronto-blue hover:underline">UofT Market Terms of Service</a> and that I am a current University of Toronto student.
                   </label>
                 </div>
                 
-                <Button 
-                  type="submit" 
-                  className="w-full md:w-auto"
-                  disabled={isSubmitting || uploadingImages}
-                >
-                  {isSubmitting || uploadingImages ? (
-                    <>
+                <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting || uploadingImages}>
+                  {isSubmitting || uploadingImages ? <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       {uploadingImages ? "Uploading Images..." : "Creating Listing..."}
-                    </>
-                  ) : (
-                    "Create Listing"
-                  )}
+                    </> : "Create Listing"}
                 </Button>
               </div>
             </form>
@@ -426,8 +337,8 @@ const Sell = () => {
                 If you're having trouble uploading images, use these tools to diagnose and fix Supabase storage issues:
               </p>
               <div className="space-y-6">
-                <SupabaseStorageTest />
                 <StoragePolicyFixer />
+                <SupabaseStorageTest />
               </div>
             </div>
           </div>
@@ -435,8 +346,6 @@ const Sell = () => {
       </main>
       
       <Footer />
-    </div>
-  );
+    </div>;
 };
-
 export default Sell;

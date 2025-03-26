@@ -1,4 +1,5 @@
-import { User, Message } from '@/types/auth';
+
+import { User } from '@/types/auth';
 import { withTimeout, logOperation, isSupabaseConfigured, supabase } from '@/lib/supabase';
 
 // For UI state syncing purposes only, not primary storage
@@ -25,66 +26,8 @@ export const loadUserFromLocalStorage = (): User | null => {
   }
 };
 
-// For non-auth related data that doesn't need database persistence
-export const saveMessagesToLocalStorage = (messages: Message[] | null | undefined): void => {
-  try {
-    if (!messages) {
-      localStorage.setItem('userMessages', JSON.stringify([]));
-    } else {
-      // Filter out any invalid message objects before saving
-      const validMessages = Array.isArray(messages) 
-        ? messages.filter(msg => msg && typeof msg === 'object') 
-        : [];
-      localStorage.setItem('userMessages', JSON.stringify(validMessages));
-    }
-  } catch (e) {
-    console.error('Error saving messages to localStorage:', e);
-  }
-};
-
-export const loadMessagesFromLocalStorage = (): Message[] => {
-  try {
-    const storedMessages = localStorage.getItem('userMessages');
-    if (!storedMessages) return [];
-    
-    const parsedMessages = JSON.parse(storedMessages);
-    if (!Array.isArray(parsedMessages)) {
-      console.warn('Stored messages is not an array, resetting:', parsedMessages);
-      localStorage.setItem('userMessages', JSON.stringify([]));
-      return [];
-    }
-    
-    // Filter out any null/undefined entries
-    return parsedMessages.filter(msg => msg && typeof msg === 'object');
-  } catch (e) {
-    console.error('Error loading messages from localStorage:', e);
-    localStorage.setItem('userMessages', JSON.stringify([]));
-    return [];
-  }
-};
-
 export const isProfileComplete = (profile: any): boolean => {
   return !!(profile && profile.name);
-};
-
-export const getLatestMessage = (messages: Message[]): Message => {
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    // Return a default message if none exists
-    return {
-      id: 'default',
-      senderId: '',
-      senderName: '',
-      receiverId: '',
-      message: 'No messages',
-      timestamp: new Date().toISOString(),
-      read: true
-    };
-  }
-  
-  return messages.reduce((latest, message) => {
-    if (!message || !message.timestamp) return latest;
-    return new Date(message.timestamp) > new Date(latest.timestamp) ? message : latest;
-  }, messages[0]);
 };
 
 // Get user profile from Supabase profiles table

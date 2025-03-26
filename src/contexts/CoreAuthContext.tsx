@@ -17,6 +17,7 @@ interface CoreAuthContextType {
   logout: () => Promise<void>;
   updateUserProfile: (profile: any) => Promise<boolean>;
   sessionId: string | null;
+  hasMultipleActiveSessions: boolean;
   isSessionNearExpiry: boolean;
   sessionExpiryTime: Date | null;
   refreshSession: () => Promise<void>;
@@ -36,6 +37,7 @@ export const CoreAuthProvider = ({ children }: { children: ReactNode }) => {
     isInitializing: auth.isInitializing,
     isUpdatingProfile: auth.isUpdatingProfile,
     sessionId: auth.sessionId,
+    hasMultipleActiveSessions: auth.hasMultipleActiveSessions,
     isSessionNearExpiry: isNearExpiry,
     sessionExpiryTime: expiryTime,
     refreshSession,

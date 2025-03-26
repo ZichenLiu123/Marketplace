@@ -20,12 +20,18 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         blue: "text-toronto-blue hover:bg-blue-50",
+        gold: "bg-toronto-gold text-toronto-dark hover:bg-toronto-gold/90",
+        glass: "bg-white/20 backdrop-blur-md text-white border border-white/30 hover:bg-white/30",
+        soft: "bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-200",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
+        xl: "h-12 rounded-md px-10 text-base",
         icon: "h-10 w-10",
+        pill: "h-10 px-6 rounded-full",
+        "pill-lg": "h-12 px-8 rounded-full text-base",
       },
     },
     defaultVariants: {

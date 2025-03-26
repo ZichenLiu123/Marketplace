@@ -31,16 +31,16 @@ const SignInForm = ({
   };
 
   return (
-    <form onSubmit={handleSignIn} className="space-y-4">
+    <form onSubmit={handleSignIn} className="space-y-4 font-sans">
       <div className="space-y-2">
-        <Label htmlFor="email">UofT Email Address</Label>
+        <Label htmlFor="email" className="font-sans">UofT Email Address</Label>
         <div className="relative">
           <AtSign className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
             id="email" 
             type="email" 
             placeholder="your.name@mail.utoronto.ca"
-            className={`pl-10 ${!isUofTEmail(signInEmail) && signInEmail.length > 0 ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+            className={`pl-10 font-sans ${!isUofTEmail(signInEmail) && signInEmail.length > 0 ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
             value={signInEmail}
             onChange={(e) => setSignInEmail(e.target.value)}
             disabled={isLoading}
@@ -48,15 +48,15 @@ const SignInForm = ({
             autoComplete="email"
           />
           {!isUofTEmail(signInEmail) && signInEmail.length > 0 && (
-            <p className="text-xs text-red-500 mt-1">Please use your UofT email address (@mail.utoronto.ca)</p>
+            <p className="text-xs text-red-500 mt-1 font-sans">Please use your UofT email address (@mail.utoronto.ca)</p>
           )}
         </div>
       </div>
       
       <div className="space-y-2">
         <div className="flex justify-between">
-          <Label htmlFor="password">Password</Label>
-          <Button variant="link" className="p-0 h-auto text-sm text-toronto-blue">
+          <Label htmlFor="password" className="font-sans">Password</Label>
+          <Button variant="link" className="p-0 h-auto text-sm text-toronto-blue font-sans">
             Forgot password?
           </Button>
         </div>
@@ -67,19 +67,20 @@ const SignInForm = ({
           onChange={(e) => setSignInPassword(e.target.value)}
           disabled={isLoading}
           required
-          autoComplete="current-password"  
+          autoComplete="current-password"
+          className="font-sans"
         />
       </div>
       
       {errorMessage && (
-        <div className="text-red-500 text-sm mt-2">
+        <div className="text-red-500 text-sm mt-2 font-sans">
           {errorMessage}
         </div>
       )}
       
       <Button 
         type="submit" 
-        className="w-full bg-toronto-blue hover:bg-toronto-blue/90" 
+        className="w-full bg-toronto-blue hover:bg-toronto-blue/90 font-sans" 
         disabled={isLoading || !isUofTEmail(signInEmail)}
       >
         {isLoading ? (

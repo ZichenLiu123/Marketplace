@@ -666,8 +666,8 @@ const ProductDetail = () => {
         {isSellerProfileOpen && (
           <SellerProfile
             seller={product.seller}
-            open={isSellerProfileOpen}
-            onOpenChange={setIsSellerProfileOpen}
+            isOpen={isSellerProfileOpen}
+            onClose={() => setIsSellerProfileOpen(false)}
           />
         )}
       </main>

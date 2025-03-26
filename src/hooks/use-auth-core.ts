@@ -14,6 +14,50 @@ export function useAuthCore() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [hasMultipleActiveSessions, setHasMultipleActiveSessions] = useState(false);
+  
+  // Function to check for other active sessions
+  const checkForMultipleSessions = useCallback(async (currentSessionId: string) => {
+    // Set a flag in localStorage with timestamp to detect multiple tabs
+    const sessionKey = `active_session_${currentSessionId}`;
+    const timestamp = Date.now();
+    
+    // Store current session info
+    localStorage.setItem(sessionKey, JSON.stringify({
+      timestamp,
+      lastActive: timestamp
+    }));
+    
+    // Check for other active sessions
+    const otherSessions = Object.keys(localStorage)
+      .filter(key => key.startsWith('active_session_') && key !== sessionKey)
+      .map(key => {
+        try {
+          return {
+            id: key.replace('active_session_', ''),
+            data: JSON.parse(localStorage.getItem(key) || '{}')
+          };
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(Boolean);
+    
+    // If other active sessions are found, set the flag
+    setHasMultipleActiveSessions(otherSessions.length > 0);
+    
+    if (otherSessions.length > 0) {
+      console.log('Multiple active sessions detected:', {
+        current: currentSessionId,
+        others: otherSessions
+      });
+      
+      // Sync state with Supabase to ensure consistency
+      await syncUserWithSupabase();
+    }
+    
+    return otherSessions.length > 0;
+  }, []);
   
   // Initialize auth state
   useEffect(() => {
@@ -42,6 +86,11 @@ export function useAuthCore() {
         const newSessionId = newSession.access_token.slice(-8);
         setSessionId(newSessionId);
         console.log('Session identified as:', newSessionId);
+        
+        // Check for multiple sessions when signing in
+        if (event === 'SIGNED_IN') {
+          await checkForMultipleSessions(newSessionId);
+        }
       } else {
         setSessionId(null);
       }
@@ -77,6 +126,9 @@ export function useAuthCore() {
             const existingSessionId = data.session.access_token.slice(-8);
             setSessionId(existingSessionId);
             console.log('Existing session identified as:', existingSessionId);
+            
+            // Check for multiple sessions on init
+            await checkForMultipleSessions(existingSessionId);
           }
           
           await refreshSessionIfNeeded();
@@ -108,11 +160,29 @@ export function useAuthCore() {
     
     checkSession();
 
+    // Set up a periodic session check and cross-tab synchronization
     const sessionRefreshInterval = setInterval(async () => {
       try {
         const { data } = await supabase.auth.getSession();
         if (data.session) {
           await refreshSessionIfNeeded();
+          
+          // If we have a sessionId, update last active timestamp for this session
+          if (sessionId) {
+            try {
+              const sessionKey = `active_session_${sessionId}`;
+              const sessionData = JSON.parse(localStorage.getItem(sessionKey) || '{}');
+              localStorage.setItem(sessionKey, JSON.stringify({
+                ...sessionData,
+                lastActive: Date.now()
+              }));
+              
+              // Check for other sessions regularly
+              await checkForMultipleSessions(sessionId);
+            } catch (e) {
+              console.error('Error updating session activity:', e);
+            }
+          }
         } else {
           setUser(null);
           setSessionId(null);
@@ -124,12 +194,67 @@ export function useAuthCore() {
       }
     }, 15 * 60 * 1000);
 
+    // Add event listener for storage changes to detect login/logout in other tabs
+    const handleStorageChange = async (event: StorageEvent) => {
+      if (event.key === 'supabase-auth' || event.key?.startsWith('active_session_')) {
+        console.log('Auth storage changed in another tab, syncing state');
+        
+        // Reload auth state from Supabase to ensure consistency
+        try {
+          const { data } = await supabase.auth.getSession();
+          
+          if (data.session) {
+            // Another tab logged in, sync our state
+            if (sessionId !== data.session.access_token?.slice(-8)) {
+              console.log('Session changed in another tab, updating local state');
+              setSession(data.session);
+              
+              const newSessionId = data.session.access_token?.slice(-8) || null;
+              setSessionId(newSessionId);
+              
+              if (newSessionId) {
+                await checkForMultipleSessions(newSessionId);
+              }
+              
+              const currentUser = await syncUserWithSupabase();
+              if (currentUser) {
+                setUser(currentUser);
+                toast.info("Session Updated", {
+                  description: "Your session has been updated from another tab"
+                });
+              }
+            }
+          } else if (sessionId) {
+            // Another tab logged out, clear our state too
+            console.log('User logged out in another tab, clearing state');
+            setUser(null);
+            setSession(null);
+            setSessionId(null);
+            localStorage.removeItem('userProfile');
+            toast.info("Signed Out", {
+              description: "You have been signed out in another tab"
+            });
+          }
+        } catch (error) {
+          console.error('Error syncing auth state across tabs:', error);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+
     return () => {
       subscription.unsubscribe();
       clearInterval(sessionRefreshInterval);
       clearTimeout(initTimeoutId);
+      window.removeEventListener('storage', handleStorageChange);
+      
+      // Clean up session tracking
+      if (sessionId) {
+        localStorage.removeItem(`active_session_${sessionId}`);
+      }
     };
-  }, []);
+  }, [sessionId, checkForMultipleSessions]);
 
   // Event handlers extracted from the auth state change event
   const handleSignIn = async (newSession: Session) => {
@@ -180,6 +305,12 @@ export function useAuthCore() {
     console.log('User signed out, clearing state');
     setUser(null);
     setSessionId(null);
+    setHasMultipleActiveSessions(false);
+    
+    // Clear all session tracking
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('active_session_'))
+      .forEach(key => localStorage.removeItem(key));
     
     // Clear all auth-related data
     clearAllLocalStorage();
@@ -214,6 +345,11 @@ export function useAuthCore() {
 
   const logout = useCallback(async (): Promise<void> => {
     try {
+      // First, remove session tracking
+      if (sessionId) {
+        localStorage.removeItem(`active_session_${sessionId}`);
+      }
+      
       // Clear all localStorage
       clearAllLocalStorage();
       
@@ -221,6 +357,7 @@ export function useAuthCore() {
       setUser(null);
       setSession(null);
       setSessionId(null);
+      setHasMultipleActiveSessions(false);
       
       // First, force signout in Supabase with session invalidation
       if (isSupabaseConfigured()) {
@@ -246,6 +383,11 @@ export function useAuthCore() {
       localStorage.removeItem('savedItems');
       localStorage.removeItem('authRedirectToast');
       
+      // Clear all session tracking again
+      Object.keys(localStorage)
+        .filter(key => key.startsWith('active_session_'))
+        .forEach(key => localStorage.removeItem(key));
+      
       // Force reset the Supabase client auth storage
       try {
         // Attempt to force reset the auth state in localStorage
@@ -260,6 +402,16 @@ export function useAuthCore() {
         console.error('Error clearing auth storage:', e);
       }
       
+      // Broadcast the logout event to other tabs
+      try {
+        localStorage.setItem('auth_logout_broadcast', Date.now().toString());
+        setTimeout(() => {
+          localStorage.removeItem('auth_logout_broadcast');
+        }, 1000);
+      } catch (e) {
+        console.error('Error broadcasting logout:', e);
+      }
+      
       toast.success("Logged Out", {
         description: "You have been successfully logged out."
       });
@@ -270,7 +422,7 @@ export function useAuthCore() {
         description: "There was a problem logging you out."
       });
     }
-  }, []);
+  }, [sessionId]);
 
   return {
     user,
@@ -279,6 +431,7 @@ export function useAuthCore() {
     isInitializing,
     isUpdatingProfile,
     sessionId,
+    hasMultipleActiveSessions,
     setUser,
     setIsUpdatingProfile,
     logout
