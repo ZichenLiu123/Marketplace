@@ -1,403 +1,124 @@
 
-import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { MapPin, Calendar, Shield, TagIcon, HeartIcon, Share2Icon, ChevronLeft, Flag, User, Mail, Phone } from "lucide-react";
-import { useListings } from "@/contexts/ListingsContext";
-import { Listing } from "@/types/listings";
-import { useSavedItems } from "@/contexts/SavedItemsContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import { formatDistanceToNow } from "date-fns";
-import FlagListingDialog from "@/components/FlagListingDialog";
-import SellerProfile from "@/components/SellerProfile";
-import { fetchSupabaseImage } from "@/lib/supabase";
-import ImageDiagnosticButton from '@/components/ImageDiagnosticButton';
-import ImageDisplay from '@/components/ImageDisplay';
+import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/components/ui/use-toast';
+import {
+  Heart,
+  Share,
+  MessageCircle,
+  Check,
+  MapPin,
+  Calendar,
+  Tag,
+  ArrowLeft,
+  Clock,
+  AlertCircle,
+} from 'lucide-react';
+
+// Demo product data
+const productData = {
+  id: 1,
+  title: 'Introduction to Economics Textbook',
+  price: 75.00,
+  images: [
+    'https://picsum.photos/id/24/800/600',
+    'https://picsum.photos/id/25/800/600',
+    'https://picsum.photos/id/26/800/600',
+    'https://picsum.photos/id/27/800/600',
+  ],
+  category: 'Textbooks',
+  condition: 'Like New',
+  description: `This is the official textbook for ECO101 and ECO102 at UofT. 
+                7th Edition (newest version), with minimal highlighting in the first few chapters only. 
+                Includes access code for online materials (unused). 
+                Perfect for anyone taking Introduction to Economics in the upcoming semester. 
+                Originally purchased for $150 from the campus bookstore.`,
+  seller: {
+    id: 101,
+    name: 'Alex Kim',
+    verified: true,
+    joined: 'August 2022',
+    major: 'Economics',
+    responseRate: '95%',
+    responseTime: 'Within 2 hours',
+    listings: 12,
+    rating: 4.8,
+    avatar: 'https://picsum.photos/id/64/100/100'
+  },
+  postedTime: '2 days ago',
+  location: 'St. George Campus',
+  specifications: {
+    'Author': 'Mankiw, N. Gregory',
+    'Edition': '7th Edition',
+    'ISBN': '978-1337091992',
+    'Course': 'ECO101/ECO102',
+    'Includes': 'Online Access Code',
+    'Pages': '836',
+    'Publisher': 'Cengage Learning'
+  }
+};
 
 const ProductDetail = () => {
-  const { id } = useParams<{ id: string }>();
-  const { getListing, incrementViews } = useListings();
-  const { isSaved, addSavedItem, removeSavedItem } = useSavedItems();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [product, setProduct] = useState<any>(null);
+  const { id } = useParams();
   const [isLoading, setIsLoading] = useState(true);
-  const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
-  const [isSellerProfileOpen, setIsSellerProfileOpen] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
-  const [imageError, setImageError] = useState(false);
-  const [imageRetries, setImageRetries] = useState(0);
-  const maxRetries = 3;
+  const [product, setProduct] = useState(productData);
+  const [selectedImage, setSelectedImage] = useState(0);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  
+  const { toast } = useToast();
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // Simulate data loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+    
+    return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const fetchProduct = async () => {
-      setIsLoading(true);
-      
-      if (!id) {
-        setIsLoading(false);
-        return;
-      }
-
-      const userListing = getListing(id);
-      if (userListing) {
-        console.log("=================== DIAGNOSTIC IMAGE LOADING ===================");
-        console.log(`Product ID: ${id}`);
-        console.log("Found listing with raw image URL:", userListing.image || userListing.image_url);
-        
-        const finalImageUrl = userListing.image || userListing.image_url;
-        console.log("Image URL type:", typeof finalImageUrl);
-        console.log("Image URL length:", finalImageUrl ? finalImageUrl.length : 0);
-        console.log("Is URL null or undefined?", !finalImageUrl);
-        console.log("Is URL empty string?", finalImageUrl === "");
-        console.log("Is URL 'null' string?", finalImageUrl === "null");
-        console.log("Is URL 'undefined' string?", finalImageUrl === "undefined");
-        
-        // Test direct fetch of the URL
-        if (finalImageUrl && finalImageUrl !== "null" && finalImageUrl !== "undefined" && finalImageUrl !== "") {
-          console.log("Testing direct fetch of image URL...");
-          try {
-            fetch(finalImageUrl, { method: 'HEAD' })
-              .then(response => {
-                console.log("Direct fetch response status:", response.status);
-                console.log("Direct fetch response OK:", response.ok);
-                console.log("Direct fetch content type:", response.headers.get('content-type'));
-              })
-              .catch(error => {
-                console.error("Direct fetch error:", error.message);
-              });
-          } catch (error) {
-            console.error("Error setting up fetch:", error);
-          }
-        }
-        
-        setProduct({
-          ...userListing,
-          image: finalImageUrl,
-          category: userListing.category || "Miscellaneous",
-          condition: userListing.condition || "Not specified",
-          location: userListing.location || "University of Toronto",
-          shipping: userListing.shipping || false,
-          contactMethod: userListing.contactMethod || userListing.contactMethod || "email",
-          contactInfo: userListing.contactInfo || userListing.contactInfo || "No contact information provided"
-        });
-
-        incrementViews(id);
-        setIsLoading(false);
-        return;
-      }
-
-      const mockProducts = [
-        {
-          id: "1",
-          title: "Calculus Textbook",
-          price: 45,
-          description: "MAT137 Calculus textbook, slightly used with no markings. Great condition, all pages intact. This is the latest edition required for the current semester. Save money compared to the bookstore price!",
-          image: "/placeholder.svg",
-          seller: "Alice Chen",
-          postedTime: "2023-09-15",
-          condition: "Like New",
-          category: "textbooks",
-          location: "St. George Campus",
-          contactMethod: "email",
-          contactInfo: "alice.chen@mail.utoronto.ca",
-          shipping: false
-        },
-        {
-          id: "2",
-          title: "MacBook Pro 2021",
-          price: 1200,
-          description: "M1 MacBook Pro with 16GB RAM and 512GB SSD. Perfect condition, barely used. Comes with original box and charger. Battery cycle count is under 50. Great for CS or engineering students!",
-          image: "/placeholder.svg",
-          seller: "John Smith",
-          postedTime: "2023-10-01",
-          condition: "Excellent",
-          category: "electronics",
-          location: "Bahen Centre",
-          contactMethod: "phone",
-          contactInfo: "416-555-1234",
-          shipping: true
-        },
-        {
-          id: "3",
-          title: "Room for Rent",
-          price: 850,
-          description: "Private room in 3-bedroom apartment near campus. Available immediately. Utilities and internet included. 5-minute walk to campus. Shared kitchen and bathroom. Laundry in building. No pets.",
-          image: "/placeholder.svg",
-          seller: "Maria Garcia",
-          postedTime: "2023-10-05",
-          condition: "N/A",
-          category: "housing",
-          location: "College & Spadina",
-          contactMethod: "email",
-          contactInfo: "maria.g@mail.utoronto.ca",
-          shipping: false
-        },
-        {
-          id: "4",
-          title: "Physics Tutoring",
-          price: 30,
-          description: "PHY131/PHY132 tutoring from a 4th year Physics major. $30/hour. Flexible scheduling. Can meet on campus or online. Strong track record of helping students improve their grades.",
-          image: "/placeholder.svg",
-          seller: "David Kim",
-          postedTime: "2023-09-28",
-          condition: "N/A",
-          category: "academic-services",
-          location: "Robarts Library",
-          contactMethod: "message",
-          contactInfo: "@david_kim",
-          shipping: false
-        }
-      ];
-
-      const mockProduct = mockProducts.find(p => p.id === id);
-      if (mockProduct) {
-        setProduct(mockProduct);
-      } else {
-        toast.error("Product not found", {
-          description: "The product you're looking for doesn't exist or has been removed."
-        });
-      }
-      setIsLoading(false);
-    };
-    fetchProduct();
-  }, [id, getListing, incrementViews]);
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return formatDistanceToNow(date, {
-        addSuffix: true
-      });
-    } catch (e) {
-      return dateString;
-    }
+  const handleFavorite = () => {
+    setIsFavorite(!isFavorite);
+    toast({
+      title: isFavorite ? "Removed from favorites" : "Added to favorites",
+      description: isFavorite 
+        ? "This item has been removed from your saved items" 
+        : "This item has been added to your saved items",
+    });
   };
 
-  const handleToggleSave = () => {
-    if (!product || !id) return;
-    if (isSaved(product.id)) {
-      removeSavedItem(id);
-      toast.success("Removed from saved items", {
-        description: "This item has been removed from your saved items."
-      });
-    } else {
-      addSavedItem({
-        id: product.id,
-        title: product.title,
-        price: product.price,
-        image: product.image || "/placeholder.svg",
-        seller: product.seller
-      });
-      toast.success("Saved!", {
-        description: "This item has been added to your saved items."
-      });
-    }
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: "Link copied",
+      description: "Product link has been copied to your clipboard",
+    });
   };
 
-  const handleShareClick = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: product?.title,
-        text: `Check out this listing: ${product?.title}`,
-        url: window.location.href
-      }).catch(err => {
-        console.error('Error sharing:', err);
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied!", {
-        description: "Product link copied to clipboard."
-      });
-    }
-  };
-
-  const handleFlagClick = () => {
-    setIsFlagDialogOpen(true);
-  };
-
-  const handleViewSellerProfile = () => {
-    setIsSellerProfileOpen(true);
-  };
-
-  const handleImageLoad = () => {
-    console.log("DIAGNOSTIC: Image loaded successfully:", product?.image);
-    setImageLoading(false);
-    setImageError(false);
-  };
-
-  const handleImageError = () => {
-    console.error("DIAGNOSTIC: Failed to load image:", product?.image);
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageText.trim()) return;
     
-    if (product?.image) {
-      console.log("Image URL characteristics:");
-      console.log("- URL length:", product.image.length);
-      console.log("- Contains 'http':", product.image.includes('http'));
-      console.log("- Contains query params:", product.image.includes('?'));
-      console.log("- Is external URL:", !product.image.includes('supabase'));
-    }
-    
-    if (imageRetries < maxRetries) {
-      console.log(`DIAGNOSTIC: Retrying image load (${imageRetries + 1}/${maxRetries})...`);
-      // Try to load again with a delay and cache-busting
-      setTimeout(() => {
-        setImageRetries(prev => prev + 1);
-        // Force image reload by appending timestamp
-        const imgElement = document.getElementById('product-image') as HTMLImageElement;
-        if (imgElement && product?.image) {
-          const timestamp = new Date().getTime();
-          const imageSrc = product.image.includes('?') 
-            ? `${product.image}&t=${timestamp}` 
-            : `${product.image}?t=${timestamp}`;
-          imgElement.src = imageSrc;
-          console.log("DIAGNOSTIC: Retrying with URL:", imageSrc);
-          
-          // Try using the fetch API directly to see what happens
-          try {
-            console.log("DIAGNOSTIC: Testing fetch API for this image...");
-            fetch(imageSrc, { 
-              method: 'GET',
-              mode: 'cors',
-              cache: 'no-cache',
-              headers: {
-                'Accept': 'image/*',
-              }
-            })
-            .then(response => {
-              console.log("Direct fetch response status:", response.status);
-              console.log("Direct fetch response OK:", response.ok);
-              console.log("Direct fetch content type:", response.headers.get('content-type'));
-              if (response.ok) {
-                console.log("DIAGNOSTIC: Fetch succeeded but img tag failed - possible CORS issue");
-              }
-            })
-            .catch(error => {
-              console.error("DIAGNOSTIC: Fetch API error:", error.message);
-            });
-          } catch (error) {
-            console.error("DIAGNOSTIC: Error setting up fetch:", error);
-          }
-        }
-      }, 1000);
-    } else {
-      console.log("DIAGNOSTIC: Max retries reached, showing error state");
-      setImageLoading(false);
-      setImageError(true);
-    }
-  };
-
-  const handleRetryImage = () => {
-    console.log("DIAGNOSTIC: Manual retry requested");
-    setImageLoading(true);
-    setImageError(false);
-    setImageRetries(0);
-    
-    // Force image reload with a fresh timestamp
-    setTimeout(() => {
-      const imgElement = document.getElementById('product-image') as HTMLImageElement;
-      if (imgElement && product?.image) {
-        const timestamp = new Date().getTime();
-        const imageSrc = product.image.includes('?') 
-          ? `${product.image}&t=${Date.now()}` 
-          : `${product.image}?t=${Date.now()}`;
-        
-        console.log("DIAGNOSTIC: Manual retry with URL:", imageSrc);
-        
-        // Try direct fetch first to see what we get
-        fetch(imageSrc, {
-          method: 'GET',
-          cache: 'no-store',
-          headers: {
-            'Accept': 'image/*',
-          }
-        })
-        .then(response => {
-          console.log("DIAGNOSTIC: Pre-fetch response status:", response.status);
-          if (response.ok) {
-            return response.blob();
-          }
-          throw new Error(`Image fetch failed with status: ${response.status}`);
-        })
-        .then(blob => {
-          console.log("DIAGNOSTIC: Pre-fetch succeeded with blob type:", blob.type);
-          console.log("DIAGNOSTIC: Blob size:", blob.size);
-          // Now try the image element
-          imgElement.src = imageSrc;
-        })
-        .catch(error => {
-          console.error("DIAGNOSTIC: Pre-fetch error:", error.message);
-          // Try the image element anyway
-          imgElement.src = imageSrc;
-        });
-      }
-    }, 100);
-  };
-
-  const renderProductImage = () => {
-    return (
-      <ImageDisplay 
-        imageUrl={product?.image || "/placeholder.svg"} 
-        alt={product?.title || "Product image"} 
-        className="w-full h-full"
-      />
-    );
-  };
-
-  const getContactMethodIcon = () => {
-    const method = product?.contactMethod?.toLowerCase() || '';
-    
-    if (method === 'email') return <Mail className="h-5 w-5 text-gray-600 mr-2" />;
-    if (method === 'phone') return <Phone className="h-5 w-5 text-gray-600 mr-2" />;
-    return <User className="h-5 w-5 text-gray-600 mr-2" />;
+    toast({
+      title: "Message sent",
+      description: "Your message has been sent to the seller",
+    });
+    setMessageText('');
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
         <Navbar />
-        <main className="flex-grow container mx-auto px-4 py-12">
-          <div className="animate-pulse space-y-8">
-            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
-            <div className="flex flex-col md:flex-row gap-8">
-              <div className="w-full md:w-1/2 h-96 bg-gray-200 rounded-md"></div>
-              <div className="w-full md:w-1/2 space-y-4">
-                <div className="h-8 bg-gray-200 rounded"></div>
-                <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4 my-6"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                <div className="h-4 bg-gray-200 rounded w-4/6"></div>
-                <div className="h-10 bg-gray-200 rounded w-full mt-6"></div>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-grow container mx-auto px-4 py-12 flex flex-col items-center justify-center">
-          <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-          <p className="text-gray-600 mb-8">The product you're looking for doesn't exist or has been removed.</p>
-          <Button asChild>
-            <Link to="/products">Browse Products</Link>
-          </Button>
-        </main>
+        <div className="flex-grow flex items-center justify-center">
+          <div className="loading-shimmer w-16 h-16 rounded-full"></div>
+        </div>
         <Footer />
       </div>
     );
@@ -407,273 +128,217 @@ const ProductDetail = () => {
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="mb-6">
-          <Button variant="ghost" asChild className="hover:bg-transparent pl-0 py-[44px]">
-            <Link to="/products" className="flex items-center text-gray-600 hover:text-gray-900">
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Back to Products
-            </Link>
-          </Button>
-        </div>
-        
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="w-full md:w-1/2">
-            <div className="bg-white rounded-lg overflow-hidden border h-96 flex items-center justify-center relative">
-              {product && renderProductImage()}
-              {!product && <div className="h-10 w-10 border-4 border-t-blue-500 border-gray-200 rounded-full animate-spin"></div>}
-            </div>
-            {product?.image && (
-              <div className="mt-2 flex justify-end">
-                <ImageDiagnosticButton imageUrl={product.image} />
-              </div>
-            )}
+      <main className="flex-grow py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          {/* Back button */}
+          <div className="mb-6">
+            <Button variant="ghost" className="px-0" asChild>
+              <Link to="/products" className="flex items-center space-x-1 text-gray-600 hover:text-toronto-blue">
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to listings</span>
+              </Link>
+            </Button>
           </div>
-          
-          <div className="w-full md:w-1/2">
-            <div className="bg-white p-6 rounded-lg border">
-              <div className="flex justify-between items-start">
-                <h1 className="text-2xl font-bold mb-2">{product.title}</h1>
-                <div className="flex space-x-2">
-                  <Button variant="outline" size="icon" className={isSaved(product.id) ? "text-red-500 border-red-200" : ""} onClick={handleToggleSave}>
-                    <HeartIcon className="h-5 w-5" fill={isSaved(product.id) ? "currentColor" : "none"} />
-                    <span className="sr-only">{isSaved(product.id) ? "Unsave" : "Save"}</span>
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={handleShareClick}>
-                    <Share2Icon className="h-5 w-5" />
-                    <span className="sr-only">Share</span>
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={handleFlagClick}>
-                    <Flag className="h-5 w-5" />
-                    <span className="sr-only">Flag</span>
-                  </Button>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+            {/* Product Images */}
+            <div className="space-y-4">
+              <div className="bg-white rounded-lg overflow-hidden border border-gray-100 shadow-soft">
+                <img 
+                  src={product.images[selectedImage]} 
+                  alt={product.title} 
+                  className="w-full h-auto aspect-video object-cover"
+                />
+              </div>
+              
+              <div className="grid grid-cols-4 gap-4">
+                {product.images.map((image, index) => (
+                  <button
+                    key={index}
+                    className={`bg-white rounded-md overflow-hidden border border-gray-100 
+                    ${selectedImage === index ? 'ring-2 ring-toronto-blue' : 'opacity-80 hover:opacity-100'}`}
+                    onClick={() => setSelectedImage(index)}
+                  >
+                    <img 
+                      src={image} 
+                      alt={`${product.title} - view ${index + 1}`} 
+                      className="w-full h-auto aspect-square object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Product Info */}
+            <div className="space-y-6">
+              <div>
+                <div className="flex justify-between items-start">
+                  <h1 className="text-3xl font-bold">{product.title}</h1>
+                  <span className="text-2xl font-bold text-toronto-blue">${product.price.toFixed(2)}</span>
+                </div>
+                
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <Badge className="bg-toronto-blue/10 text-toronto-blue hover:bg-toronto-blue/20 hover:text-toronto-blue">
+                    {product.category}
+                  </Badge>
+                  <Badge className="bg-green-100 text-green-800 hover:bg-green-200">{product.condition}</Badge>
+                </div>
+                
+                <div className="flex items-center space-x-4 text-sm text-gray-500 mt-3">
+                  <div className="flex items-center space-x-1">
+                    <MapPin className="h-4 w-4" />
+                    <span>{product.location}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Clock className="h-4 w-4" />
+                    <span>{product.postedTime}</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="text-2xl font-bold text-toronto-blue mt-2">${product.price.toFixed(2)}</div>
-              
-              <div className="flex flex-wrap gap-2 items-center mt-4 text-sm text-gray-600">
-                <div className="flex items-center">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  <span>Posted {formatDate(product.postedTime)}</span>
-                </div>
-                <span>•</span>
-                <div className="flex items-center">
-                  <MapPin className="h-4 w-4 mr-1" />
-                  <span>{product.location}</span>
-                </div>
-                <span>•</span>
-                <div className="flex items-center">
-                  <TagIcon className="h-4 w-4 mr-1" />
-                  <span>{product.category.charAt(0).toUpperCase() + product.category.slice(1)}</span>
-                </div>
+              <div className="flex space-x-3">
+                <Button variant="outline" className="flex-1" onClick={handleFavorite}>
+                  <Heart className={`h-4 w-4 mr-2 ${isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
+                  {isFavorite ? 'Saved' : 'Save'}
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={handleShare}>
+                  <Share className="h-4 w-4 mr-2" />
+                  Share
+                </Button>
+                <Button className="flex-1 bg-toronto-blue hover:bg-toronto-blue/90">
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Contact
+                </Button>
               </div>
               
-              <Separator className="my-4" />
-              
-              <div className="space-y-4">
-                <div>
-                  <h2 className="font-semibold">Seller</h2>
-                  <div className="flex items-center mt-1">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 mr-3">
-                      {product.seller.charAt(0)}
+              <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="specifications">Specifications</TabsTrigger>
+                  <TabsTrigger value="seller">Seller</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="details" className="pt-6">
+                  <h3 className="text-lg font-semibold mb-3">Description</h3>
+                  <p className="text-gray-700 whitespace-pre-line">{product.description}</p>
+                </TabsContent>
+                
+                <TabsContent value="specifications" className="pt-6">
+                  <h3 className="text-lg font-semibold mb-3">Specifications</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {Object.entries(product.specifications).map(([key, value]) => (
+                      <div key={key} className="flex items-start space-x-2">
+                        <Tag className="h-4 w-4 text-toronto-blue mt-0.5" />
+                        <div>
+                          <span className="text-gray-600 font-medium">{key}:</span>{" "}
+                          <span className="text-gray-800">{value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="seller" className="pt-6">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-16 h-16 rounded-full bg-gray-300 overflow-hidden">
+                      {product.seller.avatar ? (
+                        <img src={product.seller.avatar} alt={product.seller.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-toronto-blue text-white text-xl font-bold">
+                          {product.seller.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
+                    
                     <div className="flex-1">
-                      <div className="font-medium">{product.seller}</div>
-                      <div className="text-sm text-gray-500">UofT Verified</div>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-lg font-semibold">{product.seller.name}</h3>
+                        {product.seller.verified && (
+                          <Badge variant="outline" className="bg-green-50 border-green-200 text-green-700">
+                            <Check className="h-3 w-3 mr-1" /> Verified
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 mt-3">
+                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <Calendar className="h-4 w-4 text-gray-500" />
+                          <span>Joined {product.seller.joined}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <GraduationCap className="h-4 w-4 text-gray-500" />
+                          <span>Major: {product.seller.major}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <MessageCircle className="h-4 w-4 text-gray-500" />
+                          <span>Response rate: {product.seller.responseRate}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-sm text-gray-600">
+                          <Clock className="h-4 w-4 text-gray-500" />
+                          <span>Typically responds {product.seller.responseTime}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">{product.seller.listings}</span> active listings · 
+                          <span className="font-medium"> {product.seller.rating}</span>/5 rating
+                        </p>
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm" onClick={handleViewSellerProfile}>
-                      <User className="h-4 w-4 mr-1" />
-                      <span>View Profile</span>
-                    </Button>
                   </div>
-                </div>
-                
-                <div>
-                  <h2 className="font-semibold">Condition</h2>
-                  <p>{product.condition}</p>
-                </div>
-                
-                <Separator />
-                
-                <div>
-                  <h2 className="font-semibold">Description</h2>
-                  <p className="text-gray-700 whitespace-pre-wrap">{product.description}</p>
-                </div>
-              </div>
-              
-              <div className="mt-6 bg-gray-50 p-4 rounded-md">
-                <h2 className="font-semibold mb-2">Contact Seller</h2>
-                <div className="flex items-center bg-white p-3 rounded-md border">
-                  {getContactMethodIcon()}
-                  <div>
-                    <div className="text-sm font-medium">
-                      {product.contactMethod === 'email' ? 'Email' : 
-                        product.contactMethod === 'phone' ? 'Phone' : 
-                        'Contact Method'}
-                    </div>
-                    <div className="text-gray-700 break-all">
-                      {product.contactInfo || "No contact information provided"}
-                    </div>
+                  
+                  <div className="mt-6 pt-6 border-t">
+                    <h4 className="text-lg font-semibold mb-3">Contact Seller</h4>
+                    <form onSubmit={handleSendMessage}>
+                      <Textarea 
+                        placeholder="Hi! I'm interested in your listing. Is it still available?" 
+                        className="mb-3" 
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        rows={4}
+                      />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 text-gray-500 text-sm">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Only contact for legitimate inquiries</span>
+                        </div>
+                        <Button type="submit" className="bg-toronto-blue hover:bg-toronto-blue/90">
+                          Send Message
+                        </Button>
+                      </div>
+                    </form>
                   </div>
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Please contact the seller directly using the information above.
-                </p>
-              </div>
-              
-              <div className="flex items-center mt-6 bg-blue-50 p-3 rounded-md text-sm">
-                <Shield className="h-5 w-5 text-blue-500 mr-2" />
-                <div>
-                  <span className="font-medium">UofT Market Protection:</span> Always meet in public places and inspect items before payment
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </div>
         </div>
-        
-        <Tabs defaultValue="shipping" className="mt-12">
-          <TabsList className="mb-6">
-            <TabsTrigger value="shipping">Shipping & Pickup</TabsTrigger>
-            <TabsTrigger value="payment">Payment Options</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="shipping" className="bg-white p-6 rounded-lg border">
-            <h2 className="text-lg font-semibold mb-3">Shipping & Pickup Options</h2>
-            <div className="space-y-4">
-              <div className="p-3 border rounded-md flex items-start">
-                <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3 mt-0.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-medium">Campus Pickup</h3>
-                  <p className="text-sm text-gray-600">Meet at the specified campus location: {product.location}</p>
-                </div>
-              </div>
-              
-              <div className="p-3 border rounded-md flex items-start">
-                {product.shipping ? (
-                  <>
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3 mt-0.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Shipping Available</h3>
-                      <p className="text-sm text-gray-600">Seller offers shipping. Contact them for details and shipping costs.</p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center text-red-600 mr-3 mt-0.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                        <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="font-medium">Shipping</h3>
-                      <p className="text-sm text-gray-600">No shipping available for this item. Local pickup only.</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="payment" className="bg-white p-6 rounded-lg border">
-            <h2 className="text-lg font-semibold mb-3">Accepted Payment Methods</h2>
-            <div className="space-y-4">
-              {product.paymentMethods && product.paymentMethods.includes("cash") && (
-                <div className="p-3 border rounded-md flex items-start">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Cash</h3>
-                    <p className="text-sm text-gray-600">Pay in cash when meeting in person</p>
-                  </div>
-                </div>
-              )}
-              
-              {product.paymentMethods && product.paymentMethods.includes("e-transfer") && (
-                <div className="p-3 border rounded-md flex items-start">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">E-Transfer</h3>
-                    <p className="text-sm text-gray-600">Send electronic transfer to seller's account</p>
-                  </div>
-                </div>
-              )}
-              
-              {product.paymentMethods && product.paymentMethods.includes("paypal") && (
-                <div className="p-3 border rounded-md flex items-start">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">PayPal</h3>
-                    <p className="text-sm text-gray-600">Send payment via PayPal</p>
-                  </div>
-                </div>
-              )}
-              
-              {(!product.paymentMethods || product.paymentMethods.length === 0) && (
-                <div className="p-3 border rounded-md flex items-start">
-                  <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
-                      <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Cash</h3>
-                    <p className="text-sm text-gray-600">Pay in cash when meeting in person</p>
-                  </div>
-                </div>
-              )}
-              
-              <div className="p-4 bg-yellow-50 rounded-md text-sm mt-4">
-                <p className="font-medium text-yellow-800">Payment Safety Tips:</p>
-                <ul className="list-disc ml-5 mt-2 text-yellow-800">
-                  <li>Always verify the product before making payment</li>
-                  <li>Use secure payment methods when possible</li>
-                  <li>Get a receipt for cash transactions</li>
-                  <li>Meet in public, well-lit places for exchanges</li>
-                </ul>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-        
-        {isFlagDialogOpen && (
-          <FlagListingDialog 
-            listingId={product.id}
-            isOpen={isFlagDialogOpen}
-            onClose={() => setIsFlagDialogOpen(false)}
-          />
-        )}
-        
-        {isSellerProfileOpen && (
-          <SellerProfile
-            seller={product.seller}
-            isOpen={isSellerProfileOpen}
-            onClose={() => setIsSellerProfileOpen(false)}
-          />
-        )}
       </main>
       
       <Footer />
     </div>
+  );
+};
+
+// Component for GraduationCap icon
+const GraduationCap = (props: React.SVGProps<SVGSVGElement>) => {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+      <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5" />
+    </svg>
   );
 };
 

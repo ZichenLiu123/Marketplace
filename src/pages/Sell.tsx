@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
@@ -7,163 +8,56 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { useListings } from "@/contexts/ListingsContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { uploadImagePreservingFormat } from "@/utils/imageUtils";
-import ImageUpload from "@/components/ImageUpload";
-import SupabaseStorageTest from "@/components/SupabaseStorageTest";
-import StoragePolicyFixer from "@/components/StoragePolicyFixer";
+import { useToast } from "@/hooks/use-toast";
+import { Camera, Upload } from "lucide-react";
+
 const Sell = () => {
   const navigate = useNavigate();
-  const {
-    addListing
-  } = useListings();
-  const {
-    user
-  } = useAuth();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadingImages, setUploadingImages] = useState(false);
-  const [images, setImages] = useState<{
-    file: File;
-    preview: string;
-  }[]>([]);
-  const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("");
-  const [condition, setCondition] = useState("");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [contactMethod, setContactMethod] = useState("");
-  const [contactInfo, setContactInfo] = useState("");
-  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
-  const [shipping, setShipping] = useState(false);
-  const handlePaymentMethodChange = (method: string) => {
-    setPaymentMethods(prev => {
-      if (prev.includes(method)) {
-        return prev.filter(m => m !== method);
-      } else {
-        return [...prev, method];
-      }
-    });
-  };
-  const uploadImages = async () => {
-    if (!user || images.length === 0) return [];
-    setUploadingImages(true);
-    const uploadedImageUrls: string[] = [];
-    try {
-      console.log('Starting image upload process for', images.length, 'images');
-      if (!user.id) {
-        console.error('User ID is missing, cannot upload images');
-        toast.error("Authentication error", {
-          description: "User ID is missing. Please sign in again."
-        });
-        return [];
-      }
-      console.log('User ID for uploads:', user.id);
-      for (const image of images) {
-        if (!image.file) continue;
-        console.log('Uploading image:', image.file.name, 'type:', image.file.type);
-        console.log('File details:', {
-          name: image.file.name,
-          type: image.file.type,
-          size: image.file.size,
-          lastModified: new Date(image.file.lastModified).toISOString()
-        });
-        const imageUrl = await uploadImagePreservingFormat('listing-images', user.id, image.file);
-        if (!imageUrl) {
-          console.error('Failed to upload image:', image.file.name);
-          throw new Error(`Failed to upload image: ${image.file.name}`);
-        }
-        console.log('Image uploaded successfully, URL:', imageUrl);
-        uploadedImageUrls.push(imageUrl);
-      }
-      console.log('All images uploaded:', uploadedImageUrls);
-      return uploadedImageUrls;
-    } catch (error) {
-      console.error('Error in uploadImages:', error);
-      toast.error("Image upload failed", {
-        description: error instanceof Error ? error.message : "Unknown error during upload"
-      });
-      throw error;
-    } finally {
-      setUploadingImages(false);
-    }
-  };
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const [images, setImages] = useState<string[]>([]);
+  
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user) {
-      toast.error("Authentication required", {
-        description: "You need to be logged in to create a listing."
-      });
-      navigate('/auth');
-      return;
-    }
-    if (paymentMethods.length === 0) {
-      toast.error("Payment methods required", {
-        description: "Please select at least one payment method."
-      });
-      return;
-    }
-    if (images.length === 0) {
-      toast.error("Images required", {
-        description: "Please add at least one image of your item."
-      });
-      return;
-    }
     setIsSubmitting(true);
-    try {
-      console.log('Starting image upload...');
-      const imageUrls = await uploadImages();
-      console.log('Upload complete, image URLs:', imageUrls);
-      if (imageUrls.length === 0) {
-        toast.error("Image upload failed", {
-          description: "There was a problem uploading your images. Please try again."
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      console.log('Creating new listing with image URL:', imageUrls[0]);
-      const newListingId = await addListing({
-        title,
-        price: parseFloat(price),
-        image: imageUrls[0],
-        seller: user.name,
-        seller_id: user.id,
-        category,
-        condition,
-        description,
-        location,
-        contactMethod,
-        contactInfo,
-        paymentMethods,
-        shipping
-      });
-      if (newListingId) {
-        toast.success("Listing created!", {
-          description: "Your item has been successfully listed on UofT Market."
-        });
-        navigate(`/product/${newListingId}`);
-      } else {
-        toast.error("Error creating listing", {
-          description: "There was a problem creating your listing. Please try again."
-        });
-      }
-    } catch (error) {
-      console.error("Error creating listing:", error);
-      toast.error("Error creating listing", {
-        description: "There was a problem creating your listing. Please try again."
-      });
-    } finally {
+    
+    // Simulate form submission
+    setTimeout(() => {
       setIsSubmitting(false);
+      toast({
+        title: "Listing created!",
+        description: "Your item has been successfully listed on UofT Market.",
+      });
+      navigate("/"); // Redirect to home page
+    }, 1500);
+  };
+  
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    
+    // Show preview for the uploaded images
+    const newImages: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          newImages.push(reader.result);
+          if (newImages.length === files.length) {
+            setImages(prev => [...prev, ...newImages]);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
-  return <div className="min-h-screen flex flex-col">
+  
+  return (
+    <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <main className="flex-grow py-12 my-[40px]">
+      <main className="flex-grow py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto">
             <h1 className="text-3xl font-bold mb-2">Sell Your Item</h1>
@@ -173,24 +67,36 @@ const Sell = () => {
             </p>
             
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Item Details */}
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold mb-4">Item Details</h2>
                 
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="title">Title *</Label>
-                    <Input id="title" placeholder="Enter a descriptive title for your item" required value={title} onChange={e => setTitle(e.target.value)} />
+                    <Input 
+                      id="title" 
+                      placeholder="Enter a descriptive title for your item" 
+                      required 
+                    />
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="price">Price ($) *</Label>
-                      <Input id="price" type="number" min="0" step="0.01" placeholder="0.00" required value={price} onChange={e => setPrice(e.target.value)} />
+                      <Input 
+                        id="price" 
+                        type="number" 
+                        min="0" 
+                        step="0.01" 
+                        placeholder="0.00" 
+                        required 
+                      />
                     </div>
                     
                     <div>
                       <Label htmlFor="category">Category *</Label>
-                      <Select required value={category} onValueChange={setCategory}>
+                      <Select required>
                         <SelectTrigger id="category">
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
@@ -208,7 +114,7 @@ const Sell = () => {
                   
                   <div>
                     <Label htmlFor="condition">Condition *</Label>
-                    <Select required value={condition} onValueChange={setCondition}>
+                    <Select required>
                       <SelectTrigger id="condition">
                         <SelectValue placeholder="Select condition" />
                       </SelectTrigger>
@@ -225,30 +131,74 @@ const Sell = () => {
                   
                   <div>
                     <Label htmlFor="description">Description *</Label>
-                    <Textarea id="description" placeholder="Provide details about your item, including any defects or special features" rows={5} required value={description} onChange={e => setDescription(e.target.value)} />
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch id="shipping" checked={shipping} onCheckedChange={setShipping} />
-                    <Label htmlFor="shipping">Offer Shipping</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Provide details about your item, including any defects or special features"
+                      rows={5}
+                      required
+                    />
                   </div>
                   
                   <div>
                     <Label>Photos (max 5) *</Label>
-                    <div className="mt-2">
-                      <ImageUpload images={images} setImages={setImages} maxImages={5} />
+                    <div className="mt-2 space-y-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        {images.map((image, index) => (
+                          <div key={index} className="relative aspect-square rounded-md overflow-hidden border bg-gray-50">
+                            <img 
+                              src={image} 
+                              alt={`Preview ${index + 1}`}
+                              className="h-full w-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600"
+                              onClick={() => setImages(images.filter((_, i) => i !== index))}
+                            >
+                              <span className="sr-only">Remove</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                        
+                        {images.length < 5 && (
+                          <div className="aspect-square rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-4 hover:bg-gray-50 cursor-pointer">
+                            <Label htmlFor="image-upload" className="cursor-pointer text-center">
+                              <Camera className="mx-auto h-8 w-8 text-gray-400" />
+                              <span className="mt-2 block text-sm font-medium text-gray-600">
+                                Add Photo
+                              </span>
+                              <Input
+                                id="image-upload"
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={handleImageUpload}
+                              />
+                            </Label>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <p className="text-xs text-gray-500">
+                        Upload up to 5 photos of your item. The first photo will be the cover image.
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
               
+              {/* Meeting Preferences */}
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold mb-4">Meeting Preferences</h2>
                 
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="location">Preferred Meet-up Location *</Label>
-                    <Select required value={location} onValueChange={setLocation}>
+                    <Select required>
                       <SelectTrigger id="location">
                         <SelectValue placeholder="Select a location" />
                       </SelectTrigger>
@@ -268,19 +218,19 @@ const Sell = () => {
                     <Label>Payment Methods Accepted *</Label>
                     <div className="mt-2 space-y-2">
                       <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="cash" name="payment" className="h-4 w-4" checked={paymentMethods.includes("cash")} onChange={() => handlePaymentMethodChange("cash")} />
+                        <input type="checkbox" id="cash" name="payment" className="h-4 w-4" />
                         <label htmlFor="cash">Cash</label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="e-transfer" name="payment" className="h-4 w-4" checked={paymentMethods.includes("e-transfer")} onChange={() => handlePaymentMethodChange("e-transfer")} />
+                        <input type="checkbox" id="e-transfer" name="payment" className="h-4 w-4" />
                         <label htmlFor="e-transfer">E-Transfer</label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="paypal" name="payment" className="h-4 w-4" checked={paymentMethods.includes("paypal")} onChange={() => handlePaymentMethodChange("paypal")} />
+                        <input type="checkbox" id="paypal" name="payment" className="h-4 w-4" />
                         <label htmlFor="paypal">PayPal</label>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <input type="checkbox" id="other-payment" name="payment" className="h-4 w-4" checked={paymentMethods.includes("other")} onChange={() => handlePaymentMethodChange("other")} />
+                        <input type="checkbox" id="other-payment" name="payment" className="h-4 w-4" />
                         <label htmlFor="other-payment">Other (specify in description)</label>
                       </div>
                     </div>
@@ -288,6 +238,7 @@ const Sell = () => {
                 </div>
               </div>
               
+              {/* Contact Information */}
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <h2 className="text-xl font-semibold mb-4">Contact Information</h2>
                 
@@ -295,57 +246,60 @@ const Sell = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="contact-method">Preferred Contact Method *</Label>
-                      <Select required value={contactMethod} onValueChange={setContactMethod}>
+                      <Select required>
                         <SelectTrigger id="contact-method">
                           <SelectValue placeholder="Select contact method" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="email">Email</SelectItem>
                           <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="message">In-app Message</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     
                     <div>
                       <Label htmlFor="contact-info">Contact Information *</Label>
-                      <Input id="contact-info" placeholder="Email address or phone number" required value={contactInfo} onChange={e => setContactInfo(e.target.value)} />
+                      <Input 
+                        id="contact-info" 
+                        placeholder="Email address or phone number" 
+                        required 
+                      />
                     </div>
                   </div>
                 </div>
               </div>
               
+              {/* Terms and Submission */}
               <div className="bg-white p-6 rounded-lg shadow-sm border">
                 <div className="flex items-start space-x-3 mb-6">
-                  <input type="checkbox" id="terms" className="h-4 w-4 mt-1" required />
+                  <input 
+                    type="checkbox" 
+                    id="terms" 
+                    className="h-4 w-4 mt-1" 
+                    required 
+                  />
                   <label htmlFor="terms" className="text-sm text-gray-600">
                     I confirm that my listing complies with the <a href="/terms" className="text-toronto-blue hover:underline">UofT Market Terms of Service</a> and that I am a current University of Toronto student.
                   </label>
                 </div>
                 
-                <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting || uploadingImages}>
-                  {isSubmitting || uploadingImages ? <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {uploadingImages ? "Uploading Images..." : "Creating Listing..."}
-                    </> : "Create Listing"}
+                <Button 
+                  type="submit" 
+                  className="w-full md:w-auto"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Creating Listing..." : "Create Listing"}
                 </Button>
               </div>
             </form>
-            
-            <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border">
-              <h2 className="text-xl font-semibold mb-4">Troubleshooting</h2>
-              <p className="text-gray-600 mb-4">
-                If you're having trouble uploading images, use these tools to diagnose and fix Supabase storage issues:
-              </p>
-              <div className="space-y-6">
-                <StoragePolicyFixer />
-                <SupabaseStorageTest />
-              </div>
-            </div>
           </div>
         </div>
       </main>
       
       <Footer />
-    </div>;
+    </div>
+  );
 };
+
 export default Sell;

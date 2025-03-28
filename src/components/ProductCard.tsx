@@ -4,11 +4,6 @@ import { Link } from 'react-router-dom';
 import { Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useSavedItems } from '@/contexts/SavedItemsContext';
-import { useToast } from '@/hooks/use-toast';
-import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/contexts/AuthContext';
-import ImageDisplay from '@/components/ImageDisplay';
 
 interface ProductCardProps {
   id: string;
@@ -21,7 +16,6 @@ interface ProductCardProps {
   postedTime?: string;
   location?: string;
   description?: string;
-  onImageError?: () => void;
 }
 
 const ProductCard = ({
@@ -33,50 +27,11 @@ const ProductCard = ({
   category,
   condition,
   postedTime,
-  location,
-  onImageError
+  location
 }: ProductCardProps) => {
   const [isHovered, setIsHovered] = useState(false);
-  const { isSaved, addSavedItem, removeSavedItem } = useSavedItems();
-  const { toast } = useToast();
-  const { user } = useAuth();
-
-  const handleSaveItem = (e: React.MouseEvent) => {
-    e.preventDefault();
-    
-    if (isSaved(id)) {
-      removeSavedItem(id);
-      toast({
-        title: "Item removed",
-        description: "This item has been removed from your saved items."
-      });
-    } else {
-      addSavedItem({
-        id,
-        title,
-        price,
-        image,
-        seller
-      });
-      toast({
-        title: "Item saved",
-        description: "This item has been added to your saved items."
-      });
-    }
-  };
-
-  const displayPostedTime = () => {
-    if (!postedTime) return 'Recently';
-    
-    try {
-      if (postedTime.includes('ago')) return postedTime;
-      
-      const date = new Date(postedTime);
-      return formatDistanceToNow(date, { addSuffix: true });
-    } catch (e) {
-      return 'Recently';
-    }
-  };
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   return (
     <div 
@@ -84,14 +39,19 @@ const ProductCard = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Product Image */}
       <Link to={`/product/${id}`} className="block relative overflow-hidden aspect-[4/3]">
-        <ImageDisplay 
-          imageUrl={image}
+        {!isImageLoaded && (
+          <div className="absolute inset-0 loading-shimmer"></div>
+        )}
+        <img
+          src={image}
           alt={title}
-          onError={onImageError}
-          className={`h-full transition-all duration-500 ${isHovered ? 'scale-105' : 'scale-100'}`}
+          className={`w-full h-full object-cover transition-all duration-500 ${
+            isHovered ? 'scale-105' : 'scale-100'
+          } ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`}
+          onLoad={() => setIsImageLoaded(true)}
         />
-        
         {category && (
           <Badge className="absolute top-3 left-3 bg-white/80 text-toronto-dark hover:bg-white/90">{category}</Badge>
         )}
@@ -103,14 +63,18 @@ const ProductCard = ({
           size="icon"
           variant="ghost"
           className={`absolute bottom-3 right-3 rounded-full bg-white/80 hover:bg-white/90 transition-all duration-300 ${
-            isSaved(id) ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-gray-700'
+            isFavorite ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-gray-700'
           }`}
-          onClick={handleSaveItem}
+          onClick={(e) => {
+            e.preventDefault();
+            setIsFavorite(!isFavorite);
+          }}
         >
-          <Heart className={`h-5 w-5 ${isSaved(id) ? 'fill-current' : ''}`} />
+          <Heart className={`h-5 w-5 ${isFavorite ? 'fill-current' : ''}`} />
         </Button>
       </Link>
       
+      {/* Product Info */}
       <div className="p-4">
         <div className="flex justify-between items-start mb-2">
           <h3 className="font-bold text-lg line-clamp-1 hover:text-toronto-blue transition-colors">
@@ -121,7 +85,7 @@ const ProductCard = ({
         
         <div className="text-sm text-gray-500 mb-3">
           {location && <span className="block text-toronto-dark">{location}</span>}
-          <span className="block">{displayPostedTime()}</span>
+          {postedTime && <span className="block">{postedTime}</span>}
         </div>
         
         <div className="flex justify-between items-center">
